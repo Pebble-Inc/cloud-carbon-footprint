@@ -4,16 +4,205 @@
 
 import express from 'express'
 import { setConfig, CCFConfig } from '@cloud-carbon-footprint/common'
+import { TenantConfigService } from '@cloud-carbon-footprint/app'
 import {
   FootprintApiMiddleware,
   EmissionsApiMiddleware,
   RecommendationsApiMiddleware,
+  TenantMiddleware,
 } from './middleware'
 
 export const createRouter = (config?: CCFConfig) => {
   setConfig(config)
-
   const router = express.Router()
+  const tenantConfigService = new TenantConfigService()
+
+  // Apply tenant middleware to all existing endpoints
+  router.use(TenantMiddleware)
+
+  /**
+   * @openapi
+   * /api/tenant-configs:
+   *  post:
+   *     tags:
+   *     - Tenant Configuration
+   *     summary: Creates a new tenant configuration
+   *     description: Creates a new tenant configuration with the provided settings
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - tenantId
+   *             properties:
+   *               tenantId:
+   *                 type: string
+   *                 description: Unique identifier for the tenant
+   *               AWS:
+   *                 type: object
+   *                 description: AWS-specific configuration
+   *               GCP:
+   *                 type: object
+   *                 description: GCP-specific configuration
+   *               AZURE:
+   *                 type: object
+   *                 description: Azure-specific configuration
+   *     responses:
+   *       201:
+   *         description: Tenant configuration created successfully
+   *       400:
+   *         description: Invalid request body
+   *       500:
+   *         description: Internal server error
+   */
+  router.post(
+    '/tenant-configs',
+    async (req: express.Request, res: express.Response): Promise<void> => {
+      try {
+        const config = await tenantConfigService.createConfig(req.body)
+        res.status(201).json(config)
+      } catch (error) {
+        res.status(400).json({ error: error.message })
+      }
+    },
+  )
+
+  /**
+   * @openapi
+   * /api/tenant-configs/{tenantId}:
+   *  get:
+   *     tags:
+   *     - Tenant Configuration
+   *     summary: Gets a tenant configuration
+   *     description: Retrieves the configuration for a specific tenant
+   *     parameters:
+   *       - name: tenantId
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: ID of the tenant to retrieve configuration for
+   *     responses:
+   *       200:
+   *         description: Success
+   *       404:
+   *         description: Tenant configuration not found
+   *       500:
+   *         description: Internal server error
+   */
+  router.get(
+    '/tenant-configs/:tenantId',
+    async (req: express.Request, res: express.Response): Promise<void> => {
+      try {
+        const config = await tenantConfigService.getConfig(req.params.tenantId)
+        if (!config) {
+          res.status(404).json({ error: 'Tenant configuration not found' })
+          return
+        }
+        res.json(config)
+      } catch (error) {
+        res.status(500).json({ error: error.message })
+      }
+    },
+  )
+
+  /**
+   * @openapi
+   * /api/tenant-configs/{tenantId}:
+   *  put:
+   *     tags:
+   *     - Tenant Configuration
+   *     summary: Updates a tenant configuration
+   *     description: Updates the configuration for a specific tenant
+   *     parameters:
+   *       - name: tenantId
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: ID of the tenant to update configuration for
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               AWS:
+   *                 type: object
+   *               GCP:
+   *                 type: object
+   *               AZURE:
+   *                 type: object
+   *     responses:
+   *       200:
+   *         description: Configuration updated successfully
+   *       404:
+   *         description: Tenant configuration not found
+   *       500:
+   *         description: Internal server error
+   */
+  router.put(
+    '/tenant-configs/:tenantId',
+    async (req: express.Request, res: express.Response): Promise<void> => {
+      try {
+        const config = await tenantConfigService.updateConfig(
+          req.params.tenantId,
+          req.body,
+        )
+        if (!config) {
+          res.status(404).json({ error: 'Tenant configuration not found' })
+          return
+        }
+        res.json(config)
+      } catch (error) {
+        res.status(500).json({ error: error.message })
+      }
+    },
+  )
+
+  /**
+   * @openapi
+   * /api/tenant-configs/{tenantId}:
+   *  delete:
+   *     tags:
+   *     - Tenant Configuration
+   *     summary: Deletes a tenant configuration
+   *     description: Deletes the configuration for a specific tenant
+   *     parameters:
+   *       - name: tenantId
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: ID of the tenant to delete configuration for
+   *     responses:
+   *       204:
+   *         description: Configuration deleted successfully
+   *       404:
+   *         description: Tenant configuration not found
+   *       500:
+   *         description: Internal server error
+   */
+  router.delete(
+    '/tenant-configs/:tenantId',
+    async (req: express.Request, res: express.Response): Promise<void> => {
+      try {
+        const deleted = await tenantConfigService.deleteConfig(
+          req.params.tenantId,
+        )
+        if (!deleted) {
+          res.status(404).json({ error: 'Tenant configuration not found' })
+          return
+        }
+        res.status(204).send()
+      } catch (error) {
+        res.status(500).json({ error: error.message })
+      }
+    },
+  )
 
   /**
    * @openapi
