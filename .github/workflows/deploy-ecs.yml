@@ -47,8 +47,11 @@ jobs:
       - name: Create Docker tags
         id: docker-tag
         run: |
-          echo "DTAG_BRANCH=$(git branch --show-current  | sed 's/\//_/g')" >> $GITHUB_OUTPUT
-          echo "DTAG_SHA=$(git show -s --format=%h)" >> $GITHUB_OUTPUT
+          DTAG_BRANCH=$(git branch --show-current | sed 's/\//_/g')
+          DTAG_SHA=$(git show -s --format=%h)
+          echo "Branch:$DTAG_BRANCH, SHA:$DTAG_SHA"
+          echo "DTAG_BRANCH=$DTAG_BRANCH" >> $GITHUB_ENV
+          echo "DTAG_SHA=$DTAG_SHA" >> $GITHUB_ENV
 
       - name: Setup AWS
         uses: aws-actions/configure-aws-credentials@v4
