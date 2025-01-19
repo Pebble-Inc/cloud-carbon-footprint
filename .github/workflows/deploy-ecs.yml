@@ -72,14 +72,14 @@ jobs:
       - name: Build and tag Docker image
         run: |
           docker build \
-          -t 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.dtag.outputs.DTAG_SHA }} \
-          -t 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.dtag.outputs.DTAG_BRANCH }} \
+          -t 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_SHA }} \
+          -t 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_BRANCH }} \
           -t 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:latest .
 
       - name: Push Docker images to ECR
         run: |
-          docker push 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.dtag.outputs.DTAG_SHA }} \
-          484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.dtag.outputs.DTAG_BRANCH }} \
+          docker push 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_SHA }} \
+          484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_BRANCH }} \
           484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:latest
 
       - name: Render ECS task definition
@@ -88,7 +88,7 @@ jobs:
         with:
           task-definition: deploy.json
           container-name: pebble-ccf
-          image: 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.dtag.outputs.DTAG_SHA }}
+          image: 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_SHA }}
 
       - name: Deploy to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
