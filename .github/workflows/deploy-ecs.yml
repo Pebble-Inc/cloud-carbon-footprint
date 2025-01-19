@@ -71,13 +71,15 @@ jobs:
 
       - name: Build and tag Docker image
         run: |
-          docker build -f packages/api/Dockerfile \
+          cd packages/api
+          docker build \
           -t 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_SHA }} \
           -t 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_BRANCH }} \
           -t 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:latest .
 
       - name: Push Docker images to ECR
         run: |
+          cd packages/api
           docker push 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_SHA }} \
           484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_BRANCH }} \
           484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:latest
