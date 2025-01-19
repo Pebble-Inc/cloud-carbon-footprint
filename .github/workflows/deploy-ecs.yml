@@ -80,9 +80,9 @@ jobs:
       - name: Push Docker images to ECR
         run: |
           cd packages/api
-          docker push 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_SHA }} \
-          484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_BRANCH }} \
-          484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:latest
+          docker push 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_SHA }}
+          docker push 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_BRANCH }}
+          docker push 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:latest
 
       - name: Render ECS task definition
         id: render-pebble-ccf
