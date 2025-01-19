@@ -1,0 +1,34 @@
+{
+	"family": "pebble-ccf",
+	"taskRoleArn": "arn:aws:iam::484907489545:role/pebble-dev-ecs-exec-role20241211135546171100000002",
+	"executionRoleArn": "arn:aws:iam::484907489545:role/pebble-dev-ecs-exec-role20241211135546171100000002",
+	"networkMode": "awsvpc",
+	"containerDefinitions": [
+		{
+			"name": "pebble-ccf",
+			"image": "484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:latest",
+			"portMappings": [
+				{
+					"containerPort": 4000,
+					"hostPort": 4000,
+					"protocol": "tcp"
+				}
+			],
+			"environment": [],
+			"logConfiguration": {
+				"logDriver": "awslogs",
+				"options": {
+					"awslogs-group": "pebble-ccf-log-group",
+					"awslogs-region": "us-west-1"
+				}
+			},
+			"memory": "512",
+			"cpu": "256"
+		}
+	],
+	"volumes": [],
+	"placementConstraints": [],
+	"requiresCompatibilities": [
+		"FARGATE"
+	]
+}

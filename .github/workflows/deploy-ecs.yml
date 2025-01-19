@@ -1,0 +1,68 @@
+name: Deploy to AWS ECS
+
+on:
+  push:
+    branches:
+        - develop
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          ref: develop
+
+      - name: Create Docker tags
+        id: docker-tag
+        run: |
+          echo "DTAG_BRANCH=$(git branch --show-current  | sed 's/\//_/g')" >> $GITHUB_OUTPUT
+          echo "DTAG_SHA=$(git show -s --format=%h)" >> $GITHUB_OUTPUT
+
+      - name: Setup AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to AWS ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build api
+        run: |
+          cd packages/api
+          yarn build
+
+      - name: Build and tag Docker image
+        run: |
+          docker build \
+          -t 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.dtag.outputs.DTAG_SHA }} \
+          -t 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.dtag.outputs.DTAG_BRANCH }} \
+          -t 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:latest .
+
+      - name: Push Docker images to ECR
+        run: |
+          docker push 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.dtag.outputs.DTAG_SHA }} \
+          484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.dtag.outputs.DTAG_BRANCH }} \
+          484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:latest
+
+      - name: Render ECS task definition
+        id: render-pebble-ccf
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: deploy.json
+          container-name: pebble-ccf
+          image: 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.dtag.outputs.DTAG_SHA }}
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-pebble-ccf.outputs.task-definition }}
+          cluster: pebble-dev-cluster
+          service: pebble-ccf
+          force-new-deployment: true
+          enable-ecs-managed-tags: true

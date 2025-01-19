@@ -24,14 +24,8 @@ services:
       - AWS_ATHENA_QUERY_RESULT_LOCATION
       - AWS_BILLING_ACCOUNT_ID
       - AWS_BILLING_ACCOUNT_NAME
-      - GCP_BIG_QUERY_TABLE
-      - GCP_BILLING_PROJECT_ID
-      - GCP_BILLING_PROJECT_NAME
-      - AZURE_CLIENT_ID
-      - AZURE_CLIENT_SECRET
-      - AZURE_TENANT_ID
-      - MONGODB_URI
-      - MONGODB_CREDENTIALS
+      # - MONGODB_URI
+      # - MONGODB_CREDENTIALS
       # uncomment to define this as the certificate file for your MongoDB
       #- x509-cert-mongodb.pem
       # Uncomment to enable Electricity Maps API for Emissions Factors
@@ -47,16 +41,7 @@ services:
       - AWS_ATHENA_QUERY_RESULT_LOCATION=/run/secrets/AWS_ATHENA_QUERY_RESULT_LOCATION
       - AWS_BILLING_ACCOUNT_ID=/run/secrets/AWS_BILLING_ACCOUNT_ID
       - AWS_BILLING_ACCOUNT_NAME=/run/secrets/AWS_BILLING_ACCOUNT_NAME
-      - GCP_USE_BILLING_DATA=true
-      - GCP_USE_CARBON_FREE_ENERGY_PERCENTAGE=true
-      - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/service-account-keys.json
-      - GCP_BIG_QUERY_TABLE=/run/secrets/GOOGLE_APPLICATION_CREDENTIALS
-      - GCP_BILLING_PROJECT_ID=/run/secrets/GCP_BIG_QUERY_TABLE
-      - GCP_BILLING_PROJECT_NAME=/run/secrets/GCP_BILLING_PROJECT_ID
-      - AZURE_USE_BILLING_DATA=true
-      - AZURE_CLIENT_ID=/run/secrets/AZURE_CLIENT_ID
-      - AZURE_CLIENT_SECRET=/run/secrets/AZURE_CLIENT_SECRET
-      - AZURE_TENANT_ID=/run/secrets/AZURE_TENANT_ID
+      # - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/service-account-keys.json
       # uncomment to enable MongoDB
       #- MONGODB_URI=/run/secrets/MONGODB_URI
       #- MONGODB_CREDENTIALS=/run/secrets/MONGODB_CREDENTIALS
@@ -76,22 +61,10 @@ secrets:
     file: ~/.docker/secrets/AWS_BILLING_ACCOUNT_ID
   AWS_BILLING_ACCOUNT_NAME:
     file: ~/.docker/secrets/AWS_BILLING_ACCOUNT_NAME
-  GCP_BIG_QUERY_TABLE:
-    file: ~/.docker/secrets/GCP_BIG_QUERY_TABLE
-  GCP_BILLING_PROJECT_ID:
-    file: ~/.docker/secrets/GCP_BILLING_PROJECT_ID
-  GCP_BILLING_PROJECT_NAME:
-    file: ~/.docker/secrets/GCP_BILLING_PROJECT_NAME
-  AZURE_CLIENT_ID:
-    file: ~/.docker/secrets/AZURE_CLIENT_ID
-  AZURE_CLIENT_SECRET:
-    file: ~/.docker/secrets/AZURE_CLIENT_SECRET
-  AZURE_TENANT_ID:
-    file: ~/.docker/secrets/AZURE_TENANT_ID
-  MONGODB_URI:
-    file: ~/.docker/secrets/MONGODB_URI
-  MONGODB_CREDENTIALS:
-    file: ~/.docker/secrets/MONGODB_CREDENTIALS
+  # MONGODB_URI:
+  #   file: ~/.docker/secrets/MONGODB_URI
+  # MONGODB_CREDENTIALS:
+  #   file: ~/.docker/secrets/MONGODB_CREDENTIALS
   # uncomment to refer to your MongoDB cert file
   #x509-cert-mongodb.pem:
   #  file: ~/.docker/secrets/x509-cert-mongodb.pem
