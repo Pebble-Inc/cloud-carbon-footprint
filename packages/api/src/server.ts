@@ -33,20 +33,18 @@ httpApp.use(express.json())
 // Convert server startup to async function
 const startServer = async () => {
   // Establish Mongo Connection if cache method selected
-  if (configLoader()?.CACHE_MODE === 'MONGODB') {
-    try {
-      // Connect to MongoDB using Mongoose
-      await mongoose.connect(configLoader().MONGODB.URI, {
-        serverSelectionTimeoutMS: 5000,
-      })
-      serverLogger.info('Successfully connected to MongoDB using Mongoose')
+  try {
+    // Connect to MongoDB using Mongoose
+    await mongoose.connect(configLoader().MONGODB.URI, {
+      serverSelectionTimeoutMS: 5000,
+    })
+    serverLogger.info('Successfully connected to MongoDB using Mongoose')
 
-      // Also connect using MongoDbCacheManager for cache operations
-      await MongoDbCacheManager.createDbConnection()
-    } catch (error) {
-      serverLogger.error('Failed to connect to MongoDB:', error)
-      process.exit(1)
-    }
+    // Also connect using MongoDbCacheManager for cache operations
+    await MongoDbCacheManager.createDbConnection()
+  } catch (error) {
+    serverLogger.error('Failed to connect to MongoDB:', error)
+    process.exit(1)
   }
 
   if (process.env.ENABLE_CORS) {
