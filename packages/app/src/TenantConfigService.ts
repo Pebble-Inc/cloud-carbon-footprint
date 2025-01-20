@@ -23,7 +23,8 @@ export class TenantConfigService {
     try {
       const savedConfig = await tenantConfig.save()
       this.logger.info(`Created configuration for tenant: ${config.tenantId}`)
-      return savedConfig
+      // Convert mongoose document to plain object
+      return savedConfig.toObject() as ITenantConfig
     } catch (error) {
       this.logger.error('Error creating tenant configuration:', error)
       throw error
@@ -35,8 +36,10 @@ export class TenantConfigService {
       const config = await TenantConfig.findOne({ tenantId })
       if (!config) {
         this.logger.warn(`No configuration found for tenant: ${tenantId}`)
+        return null
       }
-      return config
+      // Convert mongoose document to plain object
+      return config.toObject() as ITenantConfig
     } catch (error) {
       this.logger.error('Error fetching tenant configuration:', error)
       throw error
@@ -56,8 +59,10 @@ export class TenantConfigService {
 
       if (updatedConfig) {
         this.logger.info(`Updated configuration for tenant: ${tenantId}`)
+        // Convert mongoose document to plain object
+        return updatedConfig.toObject() as ITenantConfig
       }
-      return updatedConfig
+      return null
     } catch (error) {
       this.logger.error('Error updating tenant configuration:', error)
       throw error
@@ -81,7 +86,9 @@ export class TenantConfigService {
 
   async listConfigs(filters?: { tenantId?: string }): Promise<ITenantConfig[]> {
     try {
-      return await TenantConfig.find(filters || {})
+      const configs = await TenantConfig.find(filters || {})
+      // Convert mongoose documents to plain objects
+      return configs.map((config) => config.toObject() as ITenantConfig)
     } catch (error) {
       this.logger.error('Error listing tenant configurations:', error)
       throw error

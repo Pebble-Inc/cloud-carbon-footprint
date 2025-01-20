@@ -2,16 +2,29 @@
  * © 2023 Thoughtworks, Inc.
  */
 
-import mongoose, { Document, Schema } from 'mongoose'
+import mongoose, { Schema } from 'mongoose'
 import { CCFConfig } from './Config'
 
-export interface ITenantConfig extends CCFConfig, Document {
+// Base interface without Document properties
+export interface ITenantConfig {
   tenantId: string
   createdAt: Date
   updatedAt: Date
+  AWS?: CCFConfig['AWS']
+  GCP?: CCFConfig['GCP']
+  AZURE?: CCFConfig['AZURE']
+  ALI?: CCFConfig['ALI']
+  LOGGING_MODE?: string
+  CACHE_MODE?: string
+  ON_PREMISE?: CCFConfig['ON_PREMISE']
+  MONGODB?: {
+    URI: string
+    CREDENTIALS: string
+  }
+  ELECTRICITY_MAPS_TOKEN?: string
 }
 
-const tenantConfigSchema = new Schema<ITenantConfig>(
+const tenantConfigSchema = new Schema(
   {
     tenantId: { type: String, required: true, unique: true },
     AWS: {
@@ -44,7 +57,7 @@ const tenantConfigSchema = new Schema<ITenantConfig>(
         NAME: String,
         CURRENT_SERVICES: [{ key: String, name: String }],
         CURRENT_REGIONS: [String],
-        projects: Schema.Types.Mixed, // AccountDetailsOrIdList can be array or object
+        projects: Schema.Types.Mixed,
         USE_CARBON_FREE_ENERGY_PERCENTAGE: Boolean,
         INCLUDE_ESTIMATES: Boolean,
         USE_BILLING_DATA: Boolean,
@@ -118,10 +131,8 @@ const tenantConfigSchema = new Schema<ITenantConfig>(
   { timestamps: true },
 )
 
-export const TenantConfig = mongoose.model<ITenantConfig>(
-  'TenantConfig',
-  tenantConfigSchema,
-)
+// Create the model without generic type parameters
+export const TenantConfig = mongoose.model('TenantConfig', tenantConfigSchema)
 
 export interface TenantConfigFilters {
   tenantId?: string

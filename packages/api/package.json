@@ -40,7 +40,7 @@
     "lint:fix": "eslint '*/**/*.ts' --quiet --fix",
     "start": "yarn start:web",
     "start:prod": "yarn start:webprod",
-    "start:web": "ts-node-dev src/server.ts",
+    "start:web": "NODE_OPTIONS='--max-old-space-size=8192' ts-node-dev src/server.ts",
     "start:webprod": "NODE_ENV=production node dist/server.js",
     "create-docker-secrets": "./create_docker_secrets.sh"
   },
