@@ -17,9 +17,7 @@ export const createRouter = (config?: CCFConfig) => {
   const router = express.Router()
   const tenantConfigService = new TenantConfigService()
 
-  // Apply tenant middleware to all existing endpoints
-  router.use(TenantMiddleware)
-
+  // POST /tenant-configs endpoint before applying tenant middleware
   /**
    * @openapi
    * /api/tenant-configs:
@@ -27,7 +25,7 @@ export const createRouter = (config?: CCFConfig) => {
    *     tags:
    *     - Tenant Configuration
    *     summary: Creates a new tenant configuration
-   *     description: Creates a new tenant configuration with the provided settings
+   *     description: Creates a new tenant configuration with cloud provider settings
    *     requestBody:
    *       required: true
    *       content:
@@ -42,18 +40,85 @@ export const createRouter = (config?: CCFConfig) => {
    *                 description: Unique identifier for the tenant
    *               AWS:
    *                 type: object
-   *                 description: AWS-specific configuration
-   *               GCP:
-   *                 type: object
-   *                 description: GCP-specific configuration
-   *               AZURE:
-   *                 type: object
-   *                 description: Azure-specific configuration
+   *                 properties:
+   *                   authentication:
+   *                     type: object
+   *                     required:
+   *                       - mode
+   *                     properties:
+   *                       mode:
+   *                         type: string
+   *                         enum: [default, AWS, GCP]
+   *                         description: Authentication mode for AWS
+   *                       options:
+   *                         type: object
+   *                         properties:
+   *                           targetRoleName:
+   *                             type: string
+   *                             description: AWS IAM role to assume
+   *                   USE_BILLING_DATA:
+   *                     type: boolean
+   *                     description: Whether to use billing data for estimates
+   *                   INCLUDE_ESTIMATES:
+   *                     type: boolean
+   *                     description: Whether to include AWS in estimation requests
+   *                   ATHENA_DB_NAME:
+   *                     type: string
+   *                     description: Athena database name for billing data
+   *                   ATHENA_DB_TABLE:
+   *                     type: string
+   *                     description: Athena table name for billing data
+   *                   ATHENA_REGION:
+   *                     type: string
+   *                     description: AWS region where Athena is configured
+   *                   ATHENA_QUERY_RESULT_LOCATION:
+   *                     type: string
+   *                     description: S3 location for Athena query results
+   *                   BILLING_ACCOUNT_ID:
+   *                     type: string
+   *                     description: AWS billing account ID
+   *                   BILLING_ACCOUNT_NAME:
+   *                     type: string
+   *                     description: AWS billing account name
+   *                   accounts:
+   *                     type: array
+   *                     description: List of AWS accounts to monitor
+   *                     items:
+   *                       type: object
+   *                       properties:
+   *                         id:
+   *                           type: string
+   *                           description: AWS account ID
+   *                         name:
+   *                           type: string
+   *                           description: AWS account name
    *     responses:
    *       201:
    *         description: Tenant configuration created successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 tenantId:
+   *                   type: string
+   *                 AWS:
+   *                   type: object
+   *                 createdAt:
+   *                   type: string
+   *                   format: date-time
+   *                 updatedAt:
+   *                   type: string
+   *                   format: date-time
    *       400:
    *         description: Invalid request body
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 error:
+   *                   type: string
    *       500:
    *         description: Internal server error
    */
@@ -68,6 +133,9 @@ export const createRouter = (config?: CCFConfig) => {
       }
     },
   )
+
+  // Apply tenant middleware to all other endpoints
+  router.use(TenantMiddleware)
 
   /**
    * @openapi

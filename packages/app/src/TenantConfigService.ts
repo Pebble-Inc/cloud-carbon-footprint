@@ -17,14 +17,12 @@ export class TenantConfigService {
   }
 
   async createConfig(config: Partial<ITenantConfig>): Promise<ITenantConfig> {
-    validateTenantConfig(config)
-    const tenantConfig = new TenantConfig(config)
-
     try {
+      validateTenantConfig(config)
+      const tenantConfig = new TenantConfig(config)
       const savedConfig = await tenantConfig.save()
       this.logger.info(`Created configuration for tenant: ${config.tenantId}`)
-      // Convert mongoose document to plain object
-      return savedConfig.toObject() as ITenantConfig
+      return savedConfig.toObject()
     } catch (error) {
       this.logger.error('Error creating tenant configuration:', error)
       throw error
@@ -33,13 +31,12 @@ export class TenantConfigService {
 
   async getConfig(tenantId: string): Promise<ITenantConfig | null> {
     try {
-      const config = await TenantConfig.findOne({ tenantId })
+      const config = await TenantConfig.findOne({ tenantId }).lean()
       if (!config) {
         this.logger.warn(`No configuration found for tenant: ${tenantId}`)
         return null
       }
-      // Convert mongoose document to plain object
-      return config.toObject() as ITenantConfig
+      return config
     } catch (error) {
       this.logger.error('Error fetching tenant configuration:', error)
       throw error
@@ -54,13 +51,12 @@ export class TenantConfigService {
       const updatedConfig = await TenantConfig.findOneAndUpdate(
         { tenantId },
         { ...config, updatedAt: new Date() },
-        { new: true },
+        { new: true, lean: true },
       )
 
       if (updatedConfig) {
         this.logger.info(`Updated configuration for tenant: ${tenantId}`)
-        // Convert mongoose document to plain object
-        return updatedConfig.toObject() as ITenantConfig
+        return updatedConfig
       }
       return null
     } catch (error) {
@@ -86,9 +82,8 @@ export class TenantConfigService {
 
   async listConfigs(filters?: { tenantId?: string }): Promise<ITenantConfig[]> {
     try {
-      const configs = await TenantConfig.find(filters || {})
-      // Convert mongoose documents to plain objects
-      return configs.map((config) => config.toObject() as ITenantConfig)
+      const configs = await TenantConfig.find(filters || {}).lean()
+      return configs
     } catch (error) {
       this.logger.error('Error listing tenant configurations:', error)
       throw error

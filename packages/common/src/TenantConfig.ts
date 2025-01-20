@@ -24,6 +24,7 @@ export interface ITenantConfig {
   ELECTRICITY_MAPS_TOKEN?: string
 }
 
+// Create the schema
 const tenantConfigSchema = new Schema(
   {
     tenantId: { type: String, required: true, unique: true },
@@ -131,8 +132,15 @@ const tenantConfigSchema = new Schema(
   { timestamps: true },
 )
 
-// Create the model without generic type parameters
-export const TenantConfig = mongoose.model('TenantConfig', tenantConfigSchema)
+// Create the model type
+export type TenantConfigDocument = mongoose.Document & ITenantConfig
+
+// Create the model
+export const TenantConfig = mongoose.model<TenantConfigDocument>(
+  'TenantConfig',
+  tenantConfigSchema,
+  'tenantconfigs',
+)
 
 export interface TenantConfigFilters {
   tenantId?: string
