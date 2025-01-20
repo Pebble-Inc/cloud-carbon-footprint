@@ -134,9 +134,6 @@ export const createRouter = (config?: CCFConfig) => {
     },
   )
 
-  // Apply tenant middleware to all other endpoints
-  router.use(TenantMiddleware)
-
   /**
    * @openapi
    * /api/tenant-configs/{tenantId}:
@@ -272,6 +269,9 @@ export const createRouter = (config?: CCFConfig) => {
     },
   )
 
+  // Apply tenant middleware to all other endpoints
+  router.use(TenantMiddleware)
+
   /**
    * @openapi
    * /api/footprint:
@@ -282,6 +282,12 @@ export const createRouter = (config?: CCFConfig) => {
    *     produces:
    *       - application/json
    *     parameters:
+   *      - name: x-tenant-id
+   *        in: header
+   *        required: true
+   *        schema:
+   *          type: string
+   *        description: Tenant identifier
    *      - name: start
    *        in: query
    *        description: The start date for the footprint; e.g. 2022-10-18
@@ -385,6 +391,13 @@ export const createRouter = (config?: CCFConfig) => {
    *     tags:
    *     - Emissions Factors
    *     description: Gets the carbon intensity (co2e/kWh) of all cloud provider regions
+   *     parameters:
+   *      - name: x-tenant-id
+   *        in: header
+   *        required: true
+   *        schema:
+   *          type: string
+   *        description: Tenant identifier
    *     responses:
    *       200:
    *         description: Success
@@ -405,6 +418,12 @@ export const createRouter = (config?: CCFConfig) => {
    *     - Recommendations
    *     description: Gets recommendations from cloud providers and their estimated carbon and energy impact
    *     parameters:
+   *      - name: x-tenant-id
+   *        in: header
+   *        required: true
+   *        schema:
+   *          type: string
+   *        description: Tenant identifier
    *      - name: awsRecommendationTarget
    *        in: query
    *        description: Defines whether targeted AWS recommendations should be within the same family

@@ -19,7 +19,8 @@ import {
   Logger,
   PartialDataError,
   RecommendationsRequestValidationError,
-  setConfig,
+  configLoader,
+  mergeConfig,
 } from '@cloud-carbon-footprint/common'
 
 const apiLogger = new Logger('api')
@@ -51,8 +52,9 @@ export const TenantMiddleware = async function (
       return next()
     }
 
-    setConfig(config)
+    mergeConfig(config)
     apiLogger.info(`Loaded configuration for tenant: ${tenantId}`)
+    apiLogger.info(`merged config: ${JSON.stringify(configLoader())}`)
     next()
   } catch (error) {
     apiLogger.error('Error loading tenant configuration:', error)
