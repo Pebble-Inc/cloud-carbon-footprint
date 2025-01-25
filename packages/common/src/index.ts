@@ -3,7 +3,7 @@
  */
 
 export { default as Logger } from './Logger'
-export { default as configLoader, setConfig } from './ConfigLoader'
+export { default as configLoader, mergeConfig, setConfig } from './ConfigLoader'
 export { default as Config } from './Config'
 export type { QUERY_DATE_TYPES, CCFConfig } from './Config'
 export { GroupBy } from './Config'
@@ -46,3 +46,4 @@ export type {
   AccountDetailsOrIdList,
 } from './Types'
 export * from './EmissionsFactors'
+export * from './TenantConfig'

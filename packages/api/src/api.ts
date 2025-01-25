@@ -4,16 +4,273 @@
 
 import express from 'express'
 import { setConfig, CCFConfig } from '@cloud-carbon-footprint/common'
+import { TenantConfigService } from '@cloud-carbon-footprint/app'
 import {
   FootprintApiMiddleware,
   EmissionsApiMiddleware,
   RecommendationsApiMiddleware,
+  TenantMiddleware,
 } from './middleware'
 
 export const createRouter = (config?: CCFConfig) => {
   setConfig(config)
-
   const router = express.Router()
+  const tenantConfigService = new TenantConfigService()
+
+  // POST /tenant-configs endpoint before applying tenant middleware
+  /**
+   * @openapi
+   * /api/tenant-configs:
+   *  post:
+   *     tags:
+   *     - Tenant Configuration
+   *     summary: Creates a new tenant configuration
+   *     description: Creates a new tenant configuration with cloud provider settings
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - tenantId
+   *             properties:
+   *               tenantId:
+   *                 type: string
+   *                 description: Unique identifier for the tenant
+   *               AWS:
+   *                 type: object
+   *                 properties:
+   *                   authentication:
+   *                     type: object
+   *                     required:
+   *                       - mode
+   *                     properties:
+   *                       mode:
+   *                         type: string
+   *                         enum: [default, AWS, GCP]
+   *                         description: Authentication mode for AWS
+   *                       options:
+   *                         type: object
+   *                         properties:
+   *                           targetRoleName:
+   *                             type: string
+   *                             description: AWS IAM role to assume
+   *                   USE_BILLING_DATA:
+   *                     type: boolean
+   *                     description: Whether to use billing data for estimates
+   *                   INCLUDE_ESTIMATES:
+   *                     type: boolean
+   *                     description: Whether to include AWS in estimation requests
+   *                   ATHENA_DB_NAME:
+   *                     type: string
+   *                     description: Athena database name for billing data
+   *                   ATHENA_DB_TABLE:
+   *                     type: string
+   *                     description: Athena table name for billing data
+   *                   ATHENA_REGION:
+   *                     type: string
+   *                     description: AWS region where Athena is configured
+   *                   ATHENA_QUERY_RESULT_LOCATION:
+   *                     type: string
+   *                     description: S3 location for Athena query results
+   *                   BILLING_ACCOUNT_ID:
+   *                     type: string
+   *                     description: AWS billing account ID
+   *                   BILLING_ACCOUNT_NAME:
+   *                     type: string
+   *                     description: AWS billing account name
+   *                   accounts:
+   *                     type: array
+   *                     description: List of AWS accounts to monitor
+   *                     items:
+   *                       type: object
+   *                       properties:
+   *                         id:
+   *                           type: string
+   *                           description: AWS account ID
+   *                         name:
+   *                           type: string
+   *                           description: AWS account name
+   *     responses:
+   *       201:
+   *         description: Tenant configuration created successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 tenantId:
+   *                   type: string
+   *                 AWS:
+   *                   type: object
+   *                 createdAt:
+   *                   type: string
+   *                   format: date-time
+   *                 updatedAt:
+   *                   type: string
+   *                   format: date-time
+   *       400:
+   *         description: Invalid request body
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 error:
+   *                   type: string
+   *       500:
+   *         description: Internal server error
+   */
+  router.post(
+    '/tenant-configs',
+    async (req: express.Request, res: express.Response): Promise<void> => {
+      try {
+        const config = await tenantConfigService.createConfig(req.body)
+        res.status(201).json(config)
+      } catch (error) {
+        res.status(400).json({ error: error.message })
+      }
+    },
+  )
+
+  /**
+   * @openapi
+   * /api/tenant-configs/{tenantId}:
+   *  get:
+   *     tags:
+   *     - Tenant Configuration
+   *     summary: Gets a tenant configuration
+   *     description: Retrieves the configuration for a specific tenant
+   *     parameters:
+   *       - name: tenantId
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: ID of the tenant to retrieve configuration for
+   *     responses:
+   *       200:
+   *         description: Success
+   *       404:
+   *         description: Tenant configuration not found
+   *       500:
+   *         description: Internal server error
+   */
+  router.get(
+    '/tenant-configs/:tenantId',
+    async (req: express.Request, res: express.Response): Promise<void> => {
+      try {
+        const config = await tenantConfigService.getConfig(req.params.tenantId)
+        if (!config) {
+          res.status(404).json({ error: 'Tenant configuration not found' })
+          return
+        }
+        res.json(config)
+      } catch (error) {
+        res.status(500).json({ error: error.message })
+      }
+    },
+  )
+
+  /**
+   * @openapi
+   * /api/tenant-configs/{tenantId}:
+   *  put:
+   *     tags:
+   *     - Tenant Configuration
+   *     summary: Updates a tenant configuration
+   *     description: Updates the configuration for a specific tenant
+   *     parameters:
+   *       - name: tenantId
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: ID of the tenant to update configuration for
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               AWS:
+   *                 type: object
+   *               GCP:
+   *                 type: object
+   *               AZURE:
+   *                 type: object
+   *     responses:
+   *       200:
+   *         description: Configuration updated successfully
+   *       404:
+   *         description: Tenant configuration not found
+   *       500:
+   *         description: Internal server error
+   */
+  router.put(
+    '/tenant-configs/:tenantId',
+    async (req: express.Request, res: express.Response): Promise<void> => {
+      try {
+        const config = await tenantConfigService.updateConfig(
+          req.params.tenantId,
+          req.body,
+        )
+        if (!config) {
+          res.status(404).json({ error: 'Tenant configuration not found' })
+          return
+        }
+        res.json(config)
+      } catch (error) {
+        res.status(500).json({ error: error.message })
+      }
+    },
+  )
+
+  /**
+   * @openapi
+   * /api/tenant-configs/{tenantId}:
+   *  delete:
+   *     tags:
+   *     - Tenant Configuration
+   *     summary: Deletes a tenant configuration
+   *     description: Deletes the configuration for a specific tenant
+   *     parameters:
+   *       - name: tenantId
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: ID of the tenant to delete configuration for
+   *     responses:
+   *       204:
+   *         description: Configuration deleted successfully
+   *       404:
+   *         description: Tenant configuration not found
+   *       500:
+   *         description: Internal server error
+   */
+  router.delete(
+    '/tenant-configs/:tenantId',
+    async (req: express.Request, res: express.Response): Promise<void> => {
+      try {
+        const deleted = await tenantConfigService.deleteConfig(
+          req.params.tenantId,
+        )
+        if (!deleted) {
+          res.status(404).json({ error: 'Tenant configuration not found' })
+          return
+        }
+        res.status(204).send()
+      } catch (error) {
+        res.status(500).json({ error: error.message })
+      }
+    },
+  )
+
+  // Apply tenant middleware to all other endpoints
+  router.use(TenantMiddleware)
 
   /**
    * @openapi
@@ -25,6 +282,12 @@ export const createRouter = (config?: CCFConfig) => {
    *     produces:
    *       - application/json
    *     parameters:
+   *      - name: x-tenant-id
+   *        in: header
+   *        required: true
+   *        schema:
+   *          type: string
+   *        description: Tenant identifier
    *      - name: start
    *        in: query
    *        description: The start date for the footprint; e.g. 2022-10-18
@@ -128,6 +391,13 @@ export const createRouter = (config?: CCFConfig) => {
    *     tags:
    *     - Emissions Factors
    *     description: Gets the carbon intensity (co2e/kWh) of all cloud provider regions
+   *     parameters:
+   *      - name: x-tenant-id
+   *        in: header
+   *        required: true
+   *        schema:
+   *          type: string
+   *        description: Tenant identifier
    *     responses:
    *       200:
    *         description: Success
@@ -148,6 +418,12 @@ export const createRouter = (config?: CCFConfig) => {
    *     - Recommendations
    *     description: Gets recommendations from cloud providers and their estimated carbon and energy impact
    *     parameters:
+   *      - name: x-tenant-id
+   *        in: header
+   *        required: true
+   *        schema:
+   *          type: string
+   *        description: Tenant identifier
    *      - name: awsRecommendationTarget
    *        in: query
    *        description: Defines whether targeted AWS recommendations should be within the same family

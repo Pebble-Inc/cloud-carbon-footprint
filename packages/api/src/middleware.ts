@@ -11,6 +11,7 @@ import {
   FootprintEstimatesRawRequest,
   RecommendationsRawRequest,
   Tags,
+  TenantConfigService,
 } from '@cloud-carbon-footprint/app'
 
 import {
@@ -18,9 +19,48 @@ import {
   Logger,
   PartialDataError,
   RecommendationsRequestValidationError,
+  configLoader,
+  mergeConfig,
 } from '@cloud-carbon-footprint/common'
 
 const apiLogger = new Logger('api')
+
+/**
+ * Middleware that loads tenant-specific configuration based on x-tenant-id header.
+ * If no tenant ID is provided or no configuration is found, falls back to environment variables.
+ */
+export const TenantMiddleware = async function (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+): Promise<void> {
+  const tenantId = req.headers['x-tenant-id'] as string
+
+  if (!tenantId) {
+    apiLogger.info(
+      'No tenant ID provided, using default environment configuration',
+    )
+    return next()
+  }
+
+  try {
+    const tenantConfigService = new TenantConfigService()
+    const config = await tenantConfigService.getConfig(tenantId)
+
+    if (!config) {
+      apiLogger.warn(`No configuration found for tenant: ${tenantId}`)
+      return next()
+    }
+
+    mergeConfig(config)
+    apiLogger.info(`Loaded configuration for tenant: ${tenantId}`)
+    apiLogger.info(`merged config: ${JSON.stringify(configLoader())}`)
+    next()
+  } catch (error) {
+    apiLogger.error('Error loading tenant configuration:', error)
+    res.status(500).json({ error: 'Error loading tenant configuration' })
+  }
+}
 
 /**
  * Handles the fetching and calculations of cloud footprint estimates for a given date range.

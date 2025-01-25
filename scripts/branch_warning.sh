@@ -16,7 +16,7 @@ if [ "$branch" != "trunk" ]; then
         REPLY="Y"
     fi
     echo
-    if [ $REPLY =~ ^[Yy]$ ]; then
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo "Okie dokie. Be Careful out there :)"
         exit 0
     fi
