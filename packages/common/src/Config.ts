@@ -90,6 +90,12 @@ export interface CCFConfig {
     URI?: string
     CREDENTIALS?: string
   }
+  DOCUMENTDB?: {
+    URI?: string
+    SSL_CA_FILE?: string
+    USERNAME?: string
+    PASSWORD?: string
+  }
   ELECTRICITY_MAPS_TOKEN?: string
 }
 
@@ -308,6 +314,12 @@ const getConfig = (): CCFConfig => ({
   MONGODB: {
     URI: getEnvVar('MONGODB_URI') || '',
     CREDENTIALS: getEnvVar('MONGODB_CREDENTIALS') || '',
+  },
+  DOCUMENTDB: {
+    URI: getEnvVar('DOCUMENTDB_URI') || '',
+    SSL_CA_FILE: getEnvVar('DOCUMENTDB_SSL_CA_FILE') || '',
+    USERNAME: getEnvVar('DOCUMENTDB_USERNAME') || '',
+    PASSWORD: getEnvVar('DOCUMENTDB_PASSWORD') || '',
   },
   ELECTRICITY_MAPS_TOKEN: getEnvVar('ELECTRICITY_MAPS_TOKEN') || '',
 })
