@@ -72,6 +72,7 @@ export interface CCFConfig {
   }
   LOGGING_MODE?: string
   CACHE_MODE?: string
+  TENANT_DB: 'MONGODB' | 'DOCUMENTDB'
   ON_PREMISE?: {
     SERVER?: {
       CPU_UTILIZATION?: number
@@ -291,6 +292,7 @@ const getConfig = (): CCFConfig => ({
   },
   LOGGING_MODE: process.env.LOGGING_MODE || '',
   CACHE_MODE: getEnvVar('CACHE_MODE') || '',
+  TENANT_DB: (getEnvVar('TENANT_DB') || 'MONGODB') as 'MONGODB' | 'DOCUMENTDB',
   ON_PREMISE: {
     SERVER: {
       CPU_UTILIZATION: parseFloat(

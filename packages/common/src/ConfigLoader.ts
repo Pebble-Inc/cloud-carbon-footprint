@@ -34,6 +34,7 @@ export const mergeConfig = (ccfConfig: Partial<CCFConfig>) => {
       ..._config.ON_PREMISE,
       ...ccfConfig.ON_PREMISE,
     },
+    TENANT_DB: ccfConfig.TENANT_DB || _config.TENANT_DB || 'MONGODB',
   }
   return _config
 }

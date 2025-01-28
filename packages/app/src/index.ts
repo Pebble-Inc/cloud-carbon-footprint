@@ -8,6 +8,7 @@ export { default as CacheManager } from './CacheManager'
 export { default as MongoDbCacheManager } from './MongoDbCacheManager'
 export { default as LocalCacheManager } from './LocalCacheManager'
 export { default as GoogleCloudCacheManager } from './GoogleCloudCacheManager'
+export { default as DocumentDbCacheManager } from './DocumentDbCacheManager'
 export { TenantConfigService } from './TenantConfigService'
 
 export {

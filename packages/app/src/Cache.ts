@@ -14,6 +14,7 @@ import GoogleCloudCacheManager from './GoogleCloudCacheManager'
 import LocalCacheManager from './LocalCacheManager'
 import CacheManager from './CacheManager'
 import MongoDbCacheManager from './MongoDbCacheManager'
+import DocumentDbCacheManager from './DocumentDbCacheManager'
 import { concat, fillDates, filterCachedEstimates } from './common/helpers'
 
 /*
@@ -26,6 +27,7 @@ export default function cache(): any {
     GCS: new GoogleCloudCacheManager(),
     LOCAL: new LocalCacheManager(),
     MONGODB: new MongoDbCacheManager(),
+    DOCUMENTDB: new DocumentDbCacheManager(),
   }
 
   return function (
