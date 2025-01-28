@@ -78,10 +78,6 @@ const tenantConfigSchema = new Schema(
           },
           RESOURCE_TAG_NAMES: { type: [String], default: [] },
           accounts: { type: Schema.Types.Mixed, default: [] },
-          authentication: {
-            mode: { type: String, default: 'default' },
-            options: { type: Schema.Types.Mixed, default: {} },
-          },
         },
         required: false,
       },
