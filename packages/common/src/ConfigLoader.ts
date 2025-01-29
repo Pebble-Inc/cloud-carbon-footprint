@@ -30,10 +30,6 @@ export const mergeConfig = (ccfConfig: Partial<CCFConfig>) => {
       ..._config.ALI,
       ...ccfConfig.ALI,
     },
-    ON_PREMISE: {
-      ..._config.ON_PREMISE,
-      ...ccfConfig.ON_PREMISE,
-    },
   }
   return _config
 }

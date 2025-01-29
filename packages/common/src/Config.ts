@@ -72,6 +72,7 @@ export interface CCFConfig {
   }
   LOGGING_MODE?: string
   CACHE_MODE?: string
+  TENANT_DB: 'MONGODB' | 'DOCUMENTDB'
   ON_PREMISE?: {
     SERVER?: {
       CPU_UTILIZATION?: number
@@ -89,6 +90,12 @@ export interface CCFConfig {
   MONGODB?: {
     URI?: string
     CREDENTIALS?: string
+  }
+  DOCUMENTDB?: {
+    URI?: string
+    SSL_CA_FILE?: string
+    USERNAME?: string
+    PASSWORD?: string
   }
   ELECTRICITY_MAPS_TOKEN?: string
 }
@@ -285,6 +292,7 @@ const getConfig = (): CCFConfig => ({
   },
   LOGGING_MODE: process.env.LOGGING_MODE || '',
   CACHE_MODE: getEnvVar('CACHE_MODE') || '',
+  TENANT_DB: (getEnvVar('TENANT_DB') || 'MONGODB') as 'MONGODB' | 'DOCUMENTDB',
   ON_PREMISE: {
     SERVER: {
       CPU_UTILIZATION: parseFloat(
@@ -308,6 +316,12 @@ const getConfig = (): CCFConfig => ({
   MONGODB: {
     URI: getEnvVar('MONGODB_URI') || '',
     CREDENTIALS: getEnvVar('MONGODB_CREDENTIALS') || '',
+  },
+  DOCUMENTDB: {
+    URI: getEnvVar('DOCUMENTDB_URI') || '',
+    SSL_CA_FILE: getEnvVar('DOCUMENTDB_SSL_CA_FILE') || '',
+    USERNAME: getEnvVar('DOCUMENTDB_USERNAME') || '',
+    PASSWORD: getEnvVar('DOCUMENTDB_PASSWORD') || '',
   },
   ELECTRICITY_MAPS_TOKEN: getEnvVar('ELECTRICITY_MAPS_TOKEN') || '',
 })

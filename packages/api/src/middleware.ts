@@ -52,7 +52,7 @@ export const TenantMiddleware = async function (
       return next()
     }
 
-    mergeConfig(config)
+    mergeConfig(config.configDoc)
     apiLogger.info(`Loaded configuration for tenant: ${tenantId}`)
     apiLogger.info(`merged config: ${JSON.stringify(configLoader())}`)
     next()
