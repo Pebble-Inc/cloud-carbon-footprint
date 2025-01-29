@@ -4,6 +4,7 @@
 
 import mongoose, { Schema } from 'mongoose'
 import { CCFConfig } from './Config'
+import { AWS_RECOMMENDATIONS_SERVICES } from './RecommendationsService'
 
 // Base interface without Document properties
 export interface ITenantConfig {
@@ -35,9 +36,10 @@ const tenantConfigSchema = new Schema(
           ATHENA_DB_TABLE: { type: String, default: '' },
           ATHENA_QUERY_RESULT_LOCATION: { type: String, default: '' },
           ATHENA_REGION: { type: String, default: '' },
-          IS_AWS_GLOBAL: { type: Boolean, default: true },
-          NAME: { type: String, default: 'AWS' },
-          RECOMMENDATIONS_SERVICE: { type: String, default: '' },
+          RECOMMENDATIONS_SERVICE: {
+            type: String,
+            default: AWS_RECOMMENDATIONS_SERVICES.RightSizing,
+          },
           COMPUTE_OPTIMIZER_BUCKET: { type: String, default: '' },
           CURRENT_SERVICES: {
             type: [
@@ -77,7 +79,15 @@ const tenantConfigSchema = new Schema(
             ],
           },
           RESOURCE_TAG_NAMES: { type: [String], default: [] },
-          accounts: { type: Schema.Types.Mixed, default: [] },
+          accounts: {
+            type: [
+              {
+                id: String,
+                name: String,
+              },
+            ],
+            default: [],
+          },
         },
         required: false,
       },
