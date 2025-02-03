@@ -25,7 +25,7 @@ Please read through our [code of conduct](CODE_OF_CONDUCT.md) for our expectatio
 
 ⭐️Give us a star if you like the project or find this work interesting!
 
-### Don’t be shy
+### Don’t be shy [possible TODO for us]
 
 If you're using or planning to use CCF in any capacity, please add to our list of **[adopters](https://github.com/cloud-carbon-footprint/cloud-carbon-footprint/blob/trunk/ADOPTERS.md)**. Having an understanding of the use of CCF (what it's being used for, what setup is used, cloud providers used, size of org and data, etc.) will help us better evolve the tool to meet the needs of this community.
 
