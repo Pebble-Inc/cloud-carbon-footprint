@@ -10,6 +10,7 @@ import {
   EmissionsApiMiddleware,
   RecommendationsApiMiddleware,
   TenantMiddleware,
+  TestConnectionMiddleware,
 } from './middleware'
 
 export const createRouter = (config?: CCFConfig) => {
@@ -38,60 +39,197 @@ export const createRouter = (config?: CCFConfig) => {
    *               tenantId:
    *                 type: string
    *                 description: Unique identifier for the tenant
-   *               AWS:
+   *               configDoc:
    *                 type: object
    *                 properties:
-   *                   authentication:
+   *                   AWS:
    *                     type: object
-   *                     required:
-   *                       - mode
    *                     properties:
-   *                       mode:
+   *                       INCLUDE_ESTIMATES:
+   *                         type: boolean
+   *                         description: Whether to include AWS in estimation requests
+   *                       USE_BILLING_DATA:
+   *                         type: boolean
+   *                         description: Whether to use billing data for estimates
+   *                       BILLING_ACCOUNT_ID:
    *                         type: string
-   *                         enum: [default, AWS, GCP]
-   *                         description: Authentication mode for AWS
-   *                       options:
+   *                         description: AWS billing account ID
+   *                       BILLING_ACCOUNT_NAME:
+   *                         type: string
+   *                         description: AWS billing account name
+   *                       ATHENA_DB_NAME:
+   *                         type: string
+   *                         description: Athena database name for billing data
+   *                       ATHENA_DB_TABLE:
+   *                         type: string
+   *                         description: Athena table name for billing data
+   *                       ATHENA_QUERY_RESULT_LOCATION:
+   *                         type: string
+   *                         description: S3 location for Athena query results
+   *                       ATHENA_REGION:
+   *                         type: string
+   *                         description: AWS region where Athena is configured
+   *                       RECOMMENDATIONS_SERVICE:
+   *                         type: string
+   *                         description: AWS recommendations service to use
+   *                       COMPUTE_OPTIMIZER_BUCKET:
+   *                         type: string
+   *                         description: S3 bucket for compute optimizer recommendations
+   *                       CURRENT_SERVICES:
+   *                         type: array
+   *                         description: List of AWS services to monitor
+   *                         items:
+   *                           type: object
+   *                           properties:
+   *                             key:
+   *                               type: string
+   *                             name:
+   *                               type: string
+   *                       CURRENT_REGIONS:
+   *                         type: array
+   *                         description: List of AWS regions to monitor
+   *                         items:
+   *                           type: string
+   *                       RESOURCE_TAG_NAMES:
+   *                         type: array
+   *                         description: List of resource tag names to monitor
+   *                         items:
+   *                           type: string
+   *                       accounts:
+   *                         type: array
+   *                         description: List of AWS accounts to monitor
+   *                         items:
+   *                           type: object
+   *                           properties:
+   *                             id:
+   *                               type: string
+   *                               description: AWS account ID
+   *                             name:
+   *                               type: string
+   *                               description: AWS account name
+   *                   GCP:
+   *                     type: object
+   *                     properties:
+   *                       NAME:
+   *                         type: string
+   *                         description: Name for GCP configuration
+   *                       INCLUDE_ESTIMATES:
+   *                         type: boolean
+   *                         description: Whether to include GCP in estimation requests
+   *                       USE_BILLING_DATA:
+   *                         type: boolean
+   *                         description: Whether to use billing data for estimates
+   *                       USE_CARBON_FREE_ENERGY_PERCENTAGE:
+   *                         type: boolean
+   *                         description: Whether to use carbon free energy percentage data
+   *                       VCPUS_PER_CLOUD_COMPOSER_ENVIRONMENT:
+   *                         type: number
+   *                         description: Number of vCPUs per Cloud Composer environment
+   *                       VCPUS_PER_GKE_CLUSTER:
+   *                         type: number
+   *                         description: Number of vCPUs per GKE cluster
+   *                       BIG_QUERY_TABLE:
+   *                         type: string
+   *                         description: BigQuery table for billing data
+   *                       BILLING_PROJECT_ID:
+   *                         type: string
+   *                         description: GCP billing project ID
+   *                       BILLING_PROJECT_NAME:
+   *                         type: string
+   *                         description: GCP billing project name
+   *                       CACHE_BUCKET_NAME:
+   *                         type: string
+   *                         description: GCS bucket name for caching
+   *                       RESOURCE_TAG_NAMES:
+   *                         type: array
+   *                         description: List of resource tag names to monitor
+   *                         items:
+   *                           type: string
+   *                       CURRENT_SERVICES:
+   *                         type: array
+   *                         description: List of GCP services to monitor
+   *                         items:
+   *                           type: object
+   *                           properties:
+   *                             key:
+   *                               type: string
+   *                             name:
+   *                               type: string
+   *                       CURRENT_REGIONS:
+   *                         type: array
+   *                         description: List of GCP regions to monitor
+   *                         items:
+   *                           type: string
+   *                       projects:
+   *                         type: array
+   *                         description: List of GCP projects
+   *                   AZURE:
+   *                     type: object
+   *                     properties:
+   *                       INCLUDE_ESTIMATES:
+   *                         type: boolean
+   *                         description: Whether to include Azure in estimation requests
+   *                       USE_BILLING_DATA:
+   *                         type: boolean
+   *                         description: Whether to use billing data for estimates
+   *                       authentication:
    *                         type: object
    *                         properties:
-   *                           targetRoleName:
+   *                           mode:
    *                             type: string
-   *                             description: AWS IAM role to assume
-   *                   USE_BILLING_DATA:
-   *                     type: boolean
-   *                     description: Whether to use billing data for estimates
-   *                   INCLUDE_ESTIMATES:
-   *                     type: boolean
-   *                     description: Whether to include AWS in estimation requests
-   *                   ATHENA_DB_NAME:
-   *                     type: string
-   *                     description: Athena database name for billing data
-   *                   ATHENA_DB_TABLE:
-   *                     type: string
-   *                     description: Athena table name for billing data
-   *                   ATHENA_REGION:
-   *                     type: string
-   *                     description: AWS region where Athena is configured
-   *                   ATHENA_QUERY_RESULT_LOCATION:
-   *                     type: string
-   *                     description: S3 location for Athena query results
-   *                   BILLING_ACCOUNT_ID:
-   *                     type: string
-   *                     description: AWS billing account ID
-   *                   BILLING_ACCOUNT_NAME:
-   *                     type: string
-   *                     description: AWS billing account name
-   *                   accounts:
-   *                     type: array
-   *                     description: List of AWS accounts to monitor
-   *                     items:
-   *                       type: object
-   *                       properties:
-   *                         id:
+   *                             description: Authentication mode for Azure
+   *                           clientId:
+   *                             type: string
+   *                             description: Azure client ID
+   *                           clientSecret:
+   *                             type: string
+   *                             description: Azure client secret
+   *                           certificatePath:
+   *                             type: string
+   *                             description: Path to Azure certificate
+   *                           tenantId:
+   *                             type: string
+   *                             description: Azure tenant ID
+   *                       RESOURCE_TAG_NAMES:
+   *                         type: array
+   *                         description: List of resource tag names to monitor
+   *                         items:
    *                           type: string
-   *                           description: AWS account ID
-   *                         name:
+   *                       CONSUMPTION_CHUNKS_DAYS:
+   *                         type: number
+   *                         description: Number of days per consumption chunk
+   *                       SUBSCRIPTION_CHUNKS:
+   *                         type: number
+   *                         description: Number of subscription chunks
+   *                       SUBSCRIPTIONS:
+   *                         type: array
+   *                         description: List of Azure subscriptions
+   *                         items:
    *                           type: string
-   *                           description: AWS account name
+   *                   ALI:
+   *                     type: object
+   *                     properties:
+   *                       NAME:
+   *                         type: string
+   *                         description: Name for AliCloud configuration
+   *                       INCLUDE_ESTIMATES:
+   *                         type: boolean
+   *                         description: Whether to include AliCloud in estimation requests
+   *                       authentication:
+   *                         type: object
+   *                         properties:
+   *                           accessKeyId:
+   *                             type: string
+   *                             description: AliCloud access key ID
+   *                           accessKeySecret:
+   *                             type: string
+   *                             description: AliCloud access key secret
+   *                   LOGGING_MODE:
+   *                     type: string
+   *                     description: Logging mode configuration
+   *                   ELECTRICITY_MAPS_TOKEN:
+   *                     type: string
+   *                     description: Token for Electricity Maps API
    *     responses:
    *       201:
    *         description: Tenant configuration created successfully
@@ -102,7 +240,7 @@ export const createRouter = (config?: CCFConfig) => {
    *               properties:
    *                 tenantId:
    *                   type: string
-   *                 AWS:
+   *                 configDoc:
    *                   type: object
    *                 createdAt:
    *                   type: string
@@ -133,6 +271,86 @@ export const createRouter = (config?: CCFConfig) => {
       }
     },
   )
+
+  /**
+   * @openapi
+   * /api/test-connection:
+   *  post:
+   *     tags:
+   *     - Tenant Configuration
+   *     summary: Tests connection to cloud provider services
+   *     description: Tests if the provided configuration can successfully connect to and access required cloud provider services
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - tenantId
+   *             properties:
+   *               tenantId:
+   *                 type: string
+   *                 description: Unique identifier for the tenant
+   *               configDoc:
+   *                 type: object
+   *                 properties:
+   *                   AWS:
+   *                     type: object
+   *                     properties:
+   *                       INCLUDE_ESTIMATES:
+   *                         type: boolean
+   *                       USE_BILLING_DATA:
+   *                         type: boolean
+   *                       authentication:
+   *                         type: object
+   *                         properties:
+   *                           mode:
+   *                             type: string
+   *                             enum: [default, AWS, GCP, EC2-METADATA, ECS-METADATA]
+   *                           options:
+   *                             type: object
+   *                             properties:
+   *                               targetRoleName:
+   *                                 type: string
+   *                               proxyAccountId:
+   *                                 type: string
+   *                               proxyRoleName:
+   *                                 type: string
+   *                       accounts:
+   *                         type: array
+   *                         items:
+   *                           type: object
+   *                           properties:
+   *                             id:
+   *                               type: string
+   *                             name:
+   *                               type: string
+   *     responses:
+   *       200:
+   *         description: Connection test successful
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 message:
+   *                   type: string
+   *       400:
+   *         description: Invalid configuration or connection test failed
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 error:
+   *                   type: string
+   *       500:
+   *         description: Internal server error
+   */
+  router.post('/test-connection', TestConnectionMiddleware)
 
   /**
    * @openapi

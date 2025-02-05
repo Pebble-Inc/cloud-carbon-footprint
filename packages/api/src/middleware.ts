@@ -12,6 +12,7 @@ import {
   RecommendationsRawRequest,
   Tags,
   TenantConfigService,
+  TestConnectionService,
 } from '@cloud-carbon-footprint/app'
 
 import {
@@ -168,5 +169,28 @@ export const RecommendationsApiMiddleware = async function (
     } else {
       res.status(500).send('Internal Server Error')
     }
+  }
+}
+
+export const TestConnectionMiddleware = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  try {
+    // Skip tenant config validation and directly test the AWS connection
+    const { configDoc } = req.body
+    const testConnectionService = new TestConnectionService()
+
+    // Only test AWS connection for now
+    await testConnectionService.testAWSConnection(configDoc?.AWS)
+
+    res.json({
+      success: true,
+      message: 'Successfully connected to AWS services',
+    })
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred'
+    res.status(400).json({ error: errorMessage })
   }
 }

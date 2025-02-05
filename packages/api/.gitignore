@@ -4,3 +4,5 @@ dist-core
 *.cache*.json
 .env
 .env.production
+*.pem
+
