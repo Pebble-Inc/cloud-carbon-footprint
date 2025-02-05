@@ -10,6 +10,7 @@ import {
   EmissionsApiMiddleware,
   RecommendationsApiMiddleware,
   TenantMiddleware,
+  TestConnectionMiddleware,
 } from './middleware'
 
 export const createRouter = (config?: CCFConfig) => {
@@ -270,6 +271,86 @@ export const createRouter = (config?: CCFConfig) => {
       }
     },
   )
+
+  /**
+   * @openapi
+   * /api/test-connection:
+   *  post:
+   *     tags:
+   *     - Tenant Configuration
+   *     summary: Tests connection to cloud provider services
+   *     description: Tests if the provided configuration can successfully connect to and access required cloud provider services
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - tenantId
+   *             properties:
+   *               tenantId:
+   *                 type: string
+   *                 description: Unique identifier for the tenant
+   *               configDoc:
+   *                 type: object
+   *                 properties:
+   *                   AWS:
+   *                     type: object
+   *                     properties:
+   *                       INCLUDE_ESTIMATES:
+   *                         type: boolean
+   *                       USE_BILLING_DATA:
+   *                         type: boolean
+   *                       authentication:
+   *                         type: object
+   *                         properties:
+   *                           mode:
+   *                             type: string
+   *                             enum: [default, AWS, GCP, EC2-METADATA, ECS-METADATA]
+   *                           options:
+   *                             type: object
+   *                             properties:
+   *                               targetRoleName:
+   *                                 type: string
+   *                               proxyAccountId:
+   *                                 type: string
+   *                               proxyRoleName:
+   *                                 type: string
+   *                       accounts:
+   *                         type: array
+   *                         items:
+   *                           type: object
+   *                           properties:
+   *                             id:
+   *                               type: string
+   *                             name:
+   *                               type: string
+   *     responses:
+   *       200:
+   *         description: Connection test successful
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 message:
+   *                   type: string
+   *       400:
+   *         description: Invalid configuration or connection test failed
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 error:
+   *                   type: string
+   *       500:
+   *         description: Internal server error
+   */
+  router.post('/test-connection', TestConnectionMiddleware)
 
   /**
    * @openapi

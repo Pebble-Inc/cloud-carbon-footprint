@@ -23,3 +23,5 @@ export type {
   RecommendationsRawRequest,
   Tags,
 } from './RawRequest'
+
+export { TestConnectionService } from './TestConnectionService'
