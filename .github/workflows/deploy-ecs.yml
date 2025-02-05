@@ -95,13 +95,13 @@ jobs:
 
       - name: DocumentDB
         with: 
-          aws-auth-mode: ${{ secrets.AWS_AUTH_MODE }}
-          aws-target-account-role-name: ${{ secrets.AWS_TARGET_ACCOUNT_ROLE_NAME }}
+          aws-auth-mode: ${{ secrets.CCF_AWS_AUTH_MODE }}
+          aws-target-account-role-name: ${{ secrets.CCF_AWS_TARGET_ACCOUNT_ROLE_NAME }}
           documentdb-uri: ${{ secrets.DOCUMENTDB_URI }}
           documentdb-ssl-ca-file: ${{ secrets.DOCUMENTDB_SSL_CA_FILE }}
           documentdb-username: ${{ secrets.DOCUMENTDB_USERNAME }}
           documentdb-password: ${{ secrets.DOCUMENTDB_PASSWORD }}
-          cache-mode: ${{ secrets.CACHE_MODE }}
+          cache-mode: ${{ secrets.CCF_CACHE_MODE }}
           tenant-db: ${{ secrets.TENANT_DB }}
 
       - name: Deploy to ECS
