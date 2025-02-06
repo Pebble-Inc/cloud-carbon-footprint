@@ -17,6 +17,7 @@ const options: swaggerJsdoc.Options = {
       title: 'CCF API Docs',
       version,
     },
+    schemes: ['http', 'https'],
   },
   apis: ['./src/api.ts', './src/utils/schemas.yaml'],
 }
@@ -24,11 +25,36 @@ const options: swaggerJsdoc.Options = {
 const swaggerSpec = swaggerJsdoc(options)
 
 function swaggerDocs(app: Express, port: number) {
-  // Swagger page
-  app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
+  // Enable CORS for swagger docs
+  const swaggerUiOptions = {
+    swaggerOptions: {
+      url: `/docs.json`,
+    },
+    explorer: true,
+  }
 
-  // Docs in JSON format
+  // Swagger page with CORS enabled
+  app.use(
+    '/docs',
+    (req, res, next) => {
+      res.header('Access-Control-Allow-Origin', '*')
+      res.header(
+        'Access-Control-Allow-Headers',
+        'Origin, X-Requested-With, Content-Type, Accept',
+      )
+      next()
+    },
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, swaggerUiOptions),
+  )
+
+  // Docs in JSON format with CORS enabled
   app.get('/docs.json', (req: Request, res: Response) => {
+    res.header('Access-Control-Allow-Origin', '*')
+    res.header(
+      'Access-Control-Allow-Headers',
+      'Origin, X-Requested-With, Content-Type, Accept',
+    )
     res.setHeader('Content-Type', 'application/json')
     res.send(swaggerSpec)
   })
