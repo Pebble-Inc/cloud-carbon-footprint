@@ -1,22 +1,26 @@
-name: Deploy to AWS ECS
+name: Server Docker Build and Deploy on Success
 
 on:
-  push:
-    branches:
-        - develop
-  workflow_dispatch:
+  workflow_run:
+    branches: [develop, release/*]
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repo
+      - name: Checkout Repository
         uses: actions/checkout@v3
         with:
-          ref: develop
+          ref: ${{ github.event.workflow_run.head_branch || github.event.workflow_run.head_commit.ref || 'develop' }}
 
-      # Beginning of yarn setup, keep in sync between all workflows, see ci.yml
+      - name: Set Build Parameters
+        id: dtag
+        run: |
+          set -e
+          BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD | sed 's/\//_/g')
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          echo "DTAG_BRANCH=$BRANCH_NAME" >> $GITHUB_ENV  
+          echo "DTAG_SHA=$COMMIT_SHA" >> $GITHUB_ENV  
       - name: use node.js 18
         uses: actions/setup-node@v4
         with:
@@ -43,25 +47,18 @@ jobs:
       - name: yarn install
         if: steps.cache-modules.outputs.cache-hit != 'true'
         run: yarn install --immutable
-      # End of yarn setup
 
-      - name: Create Docker tags
-        id: docker-tag
-        run: |
-          DTAG_BRANCH=$(git branch --show-current | sed 's/\//_/g')
-          DTAG_SHA=$(git show -s --format=%h)
-          echo "Branch:$DTAG_BRANCH, SHA:$DTAG_SHA"
-          echo "DTAG_BRANCH=$DTAG_BRANCH" >> $GITHUB_OUTPUT
-          echo "DTAG_SHA=$DTAG_SHA" >> $GITHUB_OUTPUT
 
-      - name: Setup AWS
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login to AWS ECR
+  
+
+      - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
@@ -70,45 +67,67 @@ jobs:
           cd packages/api
           yarn build
 
-      - name: Build and tag Docker image
-        run: |
-          cd packages/api
-          docker build \
-          -t 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_SHA }} \
-          -t 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_BRANCH }} \
-          -t 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:latest .
-
-      - name: Push Docker images to ECR
-        run: |
-          cd packages/api
-          docker push 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_SHA }}
-          docker push 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_BRANCH }}
-          docker push 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:latest
-
-      - name: Render ECS task definition
-        id: render-pebble-ccf
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
+      - name: Build, Tag, and Push Docker Image to Amazon ECR
+        uses: docker/build-push-action@v4
         with:
-          task-definition: deploy.json
-          container-name: pebble-ccf
-          image: 484907489545.dkr.ecr.us-west-1.amazonaws.com/pebble-ccf:${{ steps.docker-tag.outputs.DTAG_SHA }}
+          context: ./packages/api
+          push: true
+          tags: |
+            ${{ secrets.AWS_ECR_REPO }}:${{ env.DTAG_BRANCH }}
+            ${{ secrets.AWS_ECR_REPO }}:${{ env.DTAG_SHA }}
+          build-args: |
+            VERSION=${{ env.DTAG_SHA }}
 
-      - name: DocumentDB
-        with: 
-          aws-auth-mode: ${{ secrets.CCF_AWS_AUTH_MODE }}
-          aws-target-account-role-name: ${{ secrets.CCF_AWS_TARGET_ACCOUNT_ROLE_NAME }}
-          documentdb-uri: ${{ secrets.DOCUMENTDB_URI }}
-          documentdb-ssl-ca-file: ${{ secrets.DOCUMENTDB_SSL_CA_FILE }}
-          documentdb-username: ${{ secrets.DOCUMENTDB_USERNAME }}
-          documentdb-password: ${{ secrets.DOCUMENTDB_PASSWORD }}
-          cache-mode: ${{ secrets.CCF_CACHE_MODE }}
-          tenant-db: ${{ secrets.TENANT_DB }}
+
+      - name: Determine Deployment Environment
+        run: |
+          set -e
+          if [[ "${{ env.DTAG_BRANCH }}" == "develop" ]]; then
+            echo "ECS_CLUSTER=${{ secrets.ECS_DEV_CLUSTER }}" >> $GITHUB_ENV
+            echo "ECS_SERVICE=${{ secrets.ECS_DEV_SERVICE }}" >> $GITHUB_ENV
+          elif [[ "${{ env.DTAG_BRANCH }}" == release/* ]]; then
+            echo "ECS_CLUSTER=${{ secrets.ECS_PROD_CLUSTER }}" >> $GITHUB_ENV
+            echo "ECS_SERVICE=${{ secrets.ECS_PROD_SERVICE }}" >> $GITHUB_ENV
+          else
+            echo "ECS_CLUSTER=${{ secrets.ECS_DEV_CLUSTER }}" >> $GITHUB_ENV
+            echo "ECS_SERVICE=${{ secrets.ECS_DEV_SERVICE }}" >> $GITHUB_ENV
+          fi
+          
+          echo "Using ECS_CLUSTER: $(cat $GITHUB_ENV | grep ECS_CLUSTER)"
+          echo "Using ECS_SERVICE: $(cat $GITHUB_ENV | grep ECS_SERVICE)"
+
+      - name: Validate ECS Environment Variables
+        run: |
+          set -e
+          if [ -z "${{ env.ECS_CLUSTER }}" ] || [ -z "${{ env.ECS_SERVICE }}" ]; then
+            echo "ERROR: ECS_CLUSTER or ECS_SERVICE is not set!"
+            exit 1
+          fi
 
       - name: Deploy to ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ${{ steps.render-pebble-ccf.outputs.task-definition }}
-          cluster: pebble-dev-cluster
-          service: pebble-ccf
-          force-new-deployment: true
-          enable-ecs-managed-tags: true
+        run: |
+          set -e
+          CLUSTER_NAME="${{ env.ECS_CLUSTER }}"
+          SERVICE_NAME="${{ env.ECS_SERVICE }}"
+
+          PEBBLE_CCF_IMAGE="${{ secrets.AWS_ECR_REPO }}:${{ env.DTAG_SHA }}"
+          echo "Deploying to ECS Cluster: $CLUSTER_NAME, Service: $SERVICE_NAME..."
+          echo "Updating only pebble-ccf image: $PEBBLE_CCF_IMAGE"
+
+          # Get current task definition ARN
+          OLD_TASK_DEF=$(aws ecs describe-services --cluster $CLUSTER_NAME --services $SERVICE_NAME --query "services[0].taskDefinition" --output text)
+
+          # Extract full task definition JSON and update the `pebble-ccf` image
+          aws ecs describe-task-definition --task-definition $OLD_TASK_DEF --query "taskDefinition" | \
+            jq --arg CCF_IMAGE "$PEBBLE_CCF_IMAGE" \
+            '.containerDefinitions |= map(if .name == "pebble-ccf" then .image = $CCF_IMAGE else . end) |
+             {family: .family, containerDefinitions: .containerDefinitions, taskRoleArn: .taskRoleArn, executionRoleArn: .executionRoleArn, networkMode: .networkMode}' \
+            > new-task-def.json
+
+          # Register the updated task definition
+          NEW_TASK_DEF=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json --query "taskDefinition.taskDefinitionArn" --output text)
+
+          # Update the ECS service to use the new task definition
+          aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --task-definition $NEW_TASK_DEF
+
+          echo "ECS Service updated successfully!"
