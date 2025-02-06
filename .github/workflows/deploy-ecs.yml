@@ -3,8 +3,8 @@ name: Server Docker Build and Deploy on Success
 on:
   push:
     branches:
-      - develop
-      - release/*
+        - develop
+        - release/*
 
 jobs:
   build-and-deploy:
@@ -13,50 +13,41 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Fetch the entire history to avoid detached HEAD issues
           ref: ${{ github.event.workflow_run.head_branch || github.event.workflow_run.head_commit.ref || 'develop' }}
 
       - name: Set Build Parameters
         id: dtag
         run: |
-          set -ex  # Enable debugging and exit on error
-          # Fallback to GitHub context if git commands fail
-          BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's/refs\/heads\///g' | sed 's/\//_/g')
-          COMMIT_SHA="${{ github.sha }}"
-          echo "BRANCH_NAME: $BRANCH_NAME"
-          echo "COMMIT_SHA: $COMMIT_SHA"
+          set -e
+          BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD | sed 's/\//_/g')
+          COMMIT_SHA=$(git rev-parse --short HEAD)
           echo "DTAG_BRANCH=$BRANCH_NAME" >> $GITHUB_ENV  
-          echo "DTAG_SHA=$COMMIT_SHA" >> $GITHUB_ENV  
-          echo "GITHUB_ENV content:"
-          cat $GITHUB_ENV
+          echo "DTAG_SHA=$COMMIT_SHA" >> $GITHUB_ENV 
 
-      - name: Use Node.js 18
+      - name: use node.js 18
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          registry-url: https://registry.npmjs.org/  # Needed for auth
-
-      - name: Cache Node Modules
+          registry-url: https://registry.npmjs.org/ # Needed for auth
+      - name: cache all node_modules
         id: cache-modules
         uses: actions/cache@v4
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-node_modules-${{ hashFiles('yarn.lock', '**/package.json') }}
-
-      - name: Find Location of Global Yarn Cache
+      - name: find location of global yarn cache
         id: yarn-cache
         run: echo "::set-output name=dir::$(yarn cache dir)"
-
-      - name: Cache Global Yarn Cache
+      - name: cache global yarn cache
         uses: actions/cache@v4
         with:
           path: ${{ steps.yarn-cache.outputs.dir }}
           key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
-
-      - name: Yarn Install
+      - name: yarn install
         run: yarn install --immutable
+
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -65,11 +56,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build API
+      - name: Build api
         run: |
           cd packages/api
           yarn build
@@ -84,6 +77,7 @@ jobs:
             ${{ secrets.AWS_ECR_REPO }}:${{ env.DTAG_SHA }}
           build-args: |
             VERSION=${{ env.DTAG_SHA }}
+
 
       - name: Determine Deployment Environment
         run: |
