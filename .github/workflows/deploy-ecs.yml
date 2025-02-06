@@ -1,8 +1,10 @@
 name: Server Docker Build and Deploy on Success
 
 on:
-  workflow_run:
-    branches: [develop, release/*]
+  push:
+    branches:
+        - develop
+        - release/*
 
 jobs:
   build-and-deploy:
