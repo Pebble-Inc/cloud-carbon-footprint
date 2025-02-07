@@ -1,8 +1,35 @@
 FROM node:18-alpine
+
+# Set working directory
 WORKDIR /usr/src/app
+
+# Accept environment variables as build arguments
+ARG DOCUMENTDB_URI
+ARG DOCUMENTDB_USERNAME
+ARG DOCUMENTDB_PASSWORD
+ARG DOCUMENTDB_SSL_CA_FILE
+ARG CACHE_MODE
+ARG TENANT_DB
+ARG AWS_AUTH_MODE
+ARG AWS_TARGET_ACCOUNT_ROLE_NAME
+
+# Export them as environment variables at runtime
+ENV DOCUMENTDB_URI=$DOCUMENTDB_URI
+ENV DOCUMENTDB_USERNAME=$DOCUMENTDB_USERNAME
+ENV DOCUMENTDB_PASSWORD=$DOCUMENTDB_PASSWORD
+ENV DOCUMENTDB_SSL_CA_FILE=$DOCUMENTDB_SSL_CA_FILE
+ENV CACHE_MODE=$CACHE_MODE
+ENV TENANT_DB=$TENANT_DB
+ENV AWS_AUTH_MODE=$AWS_AUTH_MODE
+ENV AWS_TARGET_ACCOUNT_ROLE_NAME=$AWS_TARGET_ACCOUNT_ROLE_NAME
+
+# Copy necessary files
 COPY ./dist ./dist
 COPY ./package.json .
+
+# Install dependencies
 RUN yarn install --immutable
 RUN rm -rf core
 
+# Start the application
 CMD [ "yarn", "start:webprod"]
