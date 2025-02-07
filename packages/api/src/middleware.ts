@@ -3,6 +3,7 @@
  */
 
 import express from 'express'
+import mongoose from 'mongoose'
 
 import {
   App,
@@ -192,5 +193,43 @@ export const TestConnectionMiddleware = async (
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error occurred'
     res.status(400).json({ error: errorMessage })
+  }
+}
+
+export const HealthCheckMiddleware = async (
+  _req: express.Request,
+  res: express.Response,
+): Promise<void> => {
+  const apiLogger = new Logger('HealthCheck')
+  const healthStatus = {
+    serverAccess: true,
+    databaseConnection: false,
+    environment: process.env,
+    timestamp: new Date().toISOString(),
+  }
+
+  try {
+    // Log all environment variables
+    apiLogger.info('Environment Variables')
+
+    // Check database connection
+    try {
+      // This will throw an error if mongoose isn't connected
+      await mongoose.connection.db.admin().ping()
+      healthStatus.databaseConnection = true
+      apiLogger.info('Database connection is healthy')
+    } catch (error) {
+      apiLogger.error('Database connection check failed:', error)
+    }
+
+    res.json(healthStatus)
+  } catch (error) {
+    apiLogger.error('Health check failed:', error)
+    res.status(500).json({
+      serverAccess: false,
+      databaseConnection: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      timestamp: new Date().toISOString(),
+    })
   }
 }
