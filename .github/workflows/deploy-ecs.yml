@@ -38,7 +38,6 @@ jobs:
           key: ${{ runner.os }}-node_modules-${{ hashFiles('yarn.lock', '**/package.json') }}
 
       - name: Install Dependencies
-        if: steps.cache-modules.outputs.cache-hit != 'true'
         run: yarn install --immutable
 
       - name: Configure AWS Credentials
@@ -65,7 +64,7 @@ jobs:
             --output text || echo "")
 
           if [[ -z "$SSL_CERT_SECRET" ]]; then
-            echo "ERROR: SSL Certificate Secret could not be retrieved."
+            echo "❌ ERROR: SSL Certificate Secret could not be retrieved."
             exit 1
           fi
 
@@ -81,7 +80,7 @@ jobs:
             --output text || echo "")
 
           if [[ -z "$SECRET_ECS" ]]; then
-            echo "ERROR: Key-Value Secrets could not be retrieved."
+            echo "❌ ERROR: Key-Value Secrets could not be retrieved."
             exit 1
           fi
 
