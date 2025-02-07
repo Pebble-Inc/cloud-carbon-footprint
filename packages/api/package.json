@@ -3,7 +3,7 @@
   "version": "1.9.0",
   "license": "Apache-2.0",
   "description": "The API endpoint as an entrypoint to get cloud energy and carbon emissions. Optionally used by the client dashboard.",
-  "main": "src/server.ts",
+  "main": "dist/server.js",
   "publishConfig": {
     "main": "dist/server.js"
   },
@@ -27,7 +27,7 @@
     "type-check": "tsc --noEmit",
     "sonar:scan": "sonar-scanner",
     "test:watch": "jest --coverage --watchAll",
-    "build": "rimraf dist && yarn build:tsc && yarn prepack && cp package.json dist && yarn postpack",
+    "build": "rimraf dist && yarn build:tsc && yarn prepack && yarn postpack",
     "build:tsc": "tsc --build tsconfig.json",
     "build:watch": "onchange 'src/**/*.ts' -- yarn build",
     "build:workspace": "mkdir -p ../../dist-workspace/packages/api/dist && cp -R dist ../../dist-workspace/packages/api && mv ../../dist-workspace/packages/api/dist/package.json ../../dist-workspace/packages/api",
@@ -41,7 +41,7 @@
     "start": "yarn start:web",
     "start:prod": "yarn start:webprod",
     "start:web": "NODE_OPTIONS='--max-old-space-size=8192' ts-node-dev src/server.ts",
-    "start:webprod": "NODE_ENV=production node dist/server.js",
+    "start:webprod": "NODE_ENV=production ts-node src/server.ts",
     "create-docker-secrets": "./create_docker_secrets.sh"
   },
   "devDependencies": {
@@ -68,7 +68,6 @@
     "source-map-support": "^0.5.19",
     "supertest": "^6.1.3",
     "ts-jest": "^27.1.2",
-    "ts-node": "^10.4.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^4.6.2"
   },
@@ -80,8 +79,10 @@
     "express": "^4.17.1",
     "helmet": "^5.0.1",
     "module-alias": "^2.2.2",
+    "mongoose": "^8.9.5",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^4.6.2"
+    "swagger-ui-express": "^4.6.2",
+    "ts-node": "^10.4.0"
   },
   "lint-staged": {
     "*.{js,ts}": [
