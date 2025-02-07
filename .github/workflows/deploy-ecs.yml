@@ -3,8 +3,8 @@ name: Server Docker Build and Deploy on Success
 on:
   push:
     branches:
-        - develop
-        - release/*
+      - develop
+      - release/*
 
 jobs:
   build-and-deploy:
@@ -13,7 +13,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.workflow_run.head_branch || github.event.workflow_run.head_commit.ref || 'develop' }}
+          ref: ${{ github.ref_name }}
 
       - name: Set Build Parameters
         id: dtag
@@ -24,30 +24,22 @@ jobs:
           echo "DTAG_BRANCH=$BRANCH_NAME" >> $GITHUB_ENV  
           echo "DTAG_SHA=$COMMIT_SHA" >> $GITHUB_ENV 
 
-      - name: use node.js 18
+      - name: Use Node.js 18
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          registry-url: https://registry.npmjs.org/ # Needed for auth
-      - name: cache all node_modules
+          registry-url: https://registry.npmjs.org/
+
+      - name: Cache Dependencies
         id: cache-modules
         uses: actions/cache@v4
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-node_modules-${{ hashFiles('yarn.lock', '**/package.json') }}
-      - name: find location of global yarn cache
-        id: yarn-cache
-        run: echo "::set-output name=dir::$(yarn cache dir)"
-      - name: cache global yarn cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.yarn-cache.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-      - name: yarn install
-        run: yarn install --immutable
 
+      - name: Install Dependencies
+        if: steps.cache-modules.outputs.cache-hit != 'true'
+        run: yarn install --immutable
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -55,14 +47,68 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+  
+      - name: Retrieve Secrets from AWS Secrets Manager
+        run: |
+          set -e
 
+          # Define the AWS region dynamically from GitHub Secrets
+          AWS_REGION=${{ secrets.AWS_REGION }}
+
+          echo "Retrieving secrets from AWS Secrets Manager in region: $AWS_REGION"
+
+          # Retrieve the SSL Certificate from 'documentDB-dev-ecs-globalkey'
+          SSL_CERT_SECRET=$(aws secretsmanager get-secret-value \
+            --region $AWS_REGION \
+            --secret-id documentDB-dev-ecs-globalkey \
+            --query "SecretString" \
+            --output text || echo "")
+
+          if [[ -z "$SSL_CERT_SECRET" ]]; then
+            echo "ERROR: SSL Certificate Secret could not be retrieved."
+            exit 1
+          fi
+
+          # Save the SSL Certificate as a file
+          echo "$SSL_CERT_SECRET" > global-bundle.pem
+          echo "DOCUMENTDB_SSL_CA_FILE=global-bundle.pem" >> $GITHUB_ENV
+
+          # Retrieve Key-Value Secrets from 'documentDB-dev-ecs'
+          SECRET_ECS=$(aws secretsmanager get-secret-value \
+            --region $AWS_REGION \
+            --secret-id documentDB-dev-ecs \
+            --query "SecretString" \
+            --output text || echo "")
+
+          if [[ -z "$SECRET_ECS" ]]; then
+            echo "ERROR: Key-Value Secrets could not be retrieved."
+            exit 1
+          fi
+
+          # Extract values from JSON
+          DOCUMENTDB_URI=$(echo "$SECRET_ECS" | jq -r '.DOCUMENTDB_URI')
+          DOCUMENTDB_USERNAME=$(echo "$SECRET_ECS" | jq -r '.DOCUMENTDB_USERNAME')
+          DOCUMENTDB_PASSWORD=$(echo "$SECRET_ECS" | jq -r '.DOCUMENTDB_PASSWORD')
+          CACHE_MODE=$(echo "$SECRET_ECS" | jq -r '.CACHE_MODE')
+          TENANT_DB=$(echo "$SECRET_ECS" | jq -r '.TENANT_DB')
+          AWS_AUTH_MODE=$(echo "$SECRET_ECS" | jq -r '.AWS_AUTH_MODE')
+          AWS_TARGET_ACCOUNT_ROLE_NAME=$(echo "$SECRET_ECS" | jq -r '.AWS_TARGET_ACCOUNT_ROLE_NAME')
+
+          # Export environment variables for Docker build
+          echo "DOCUMENTDB_URI=$DOCUMENTDB_URI" >> $GITHUB_ENV
+          echo "DOCUMENTDB_USERNAME=$DOCUMENTDB_USERNAME" >> $GITHUB_ENV
+          echo "DOCUMENTDB_PASSWORD=$DOCUMENTDB_PASSWORD" >> $GITHUB_ENV
+          echo "CACHE_MODE=$CACHE_MODE" >> $GITHUB_ENV
+          echo "TENANT_DB=$TENANT_DB" >> $GITHUB_ENV
+          echo "AWS_AUTH_MODE=$AWS_AUTH_MODE" >> $GITHUB_ENV
+          echo "AWS_TARGET_ACCOUNT_ROLE_NAME=$AWS_TARGET_ACCOUNT_ROLE_NAME" >> $GITHUB_ENV
 
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build api
+      - name: Build API
         run: |
           cd packages/api
           yarn build
@@ -77,7 +123,14 @@ jobs:
             ${{ secrets.AWS_ECR_REPO }}:${{ env.DTAG_SHA }}
           build-args: |
             VERSION=${{ env.DTAG_SHA }}
-
+            DOCUMENTDB_URI=${{ env.DOCUMENTDB_URI }}
+            DOCUMENTDB_USERNAME=${{ env.DOCUMENTDB_USERNAME }}
+            DOCUMENTDB_PASSWORD=${{ env.DOCUMENTDB_PASSWORD }}
+            DOCUMENTDB_SSL_CA_FILE=${{ env.DOCUMENTDB_SSL_CA_FILE }}
+            CACHE_MODE=${{ env.CACHE_MODE }}
+            TENANT_DB=${{ env.TENANT_DB }}
+            AWS_AUTH_MODE=${{ env.AWS_AUTH_MODE }}
+            AWS_TARGET_ACCOUNT_ROLE_NAME=${{ env.AWS_TARGET_ACCOUNT_ROLE_NAME }}
 
       - name: Determine Deployment Environment
         run: |
@@ -91,17 +144,6 @@ jobs:
           else
             echo "ECS_CLUSTER=${{ secrets.ECS_DEV_CLUSTER }}" >> $GITHUB_ENV
             echo "ECS_SERVICE=${{ secrets.ECS_DEV_SERVICE }}" >> $GITHUB_ENV
-          fi
-          
-          echo "Using ECS_CLUSTER: $(cat $GITHUB_ENV | grep ECS_CLUSTER)"
-          echo "Using ECS_SERVICE: $(cat $GITHUB_ENV | grep ECS_SERVICE)"
-
-      - name: Validate ECS Environment Variables
-        run: |
-          set -e
-          if [ -z "${{ env.ECS_CLUSTER }}" ] || [ -z "${{ env.ECS_SERVICE }}" ]; then
-            echo "ERROR: ECS_CLUSTER or ECS_SERVICE is not set!"
-            exit 1
           fi
 
       - name: Deploy to ECS
