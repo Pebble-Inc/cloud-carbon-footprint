@@ -11,6 +11,7 @@ import {
   RecommendationsApiMiddleware,
   TenantMiddleware,
   TestConnectionMiddleware,
+  HealthCheckMiddleware,
 } from './middleware'
 
 export const createRouter = (config?: CCFConfig) => {
@@ -667,14 +668,46 @@ export const createRouter = (config?: CCFConfig) => {
    *  get:
    *     tags:
    *     - Healthcheck
-   *     description: Responds if the app is up and running
+   *     description: Checks if the app is up and running, database is connected, and logs environment variables
    *     responses:
    *       200:
-   *         description: Responds "OK" if app is up and running
+   *         description: Success response with health status
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 serverAccess:
+   *                   type: boolean
+   *                   description: Whether the server is accessible
+   *                 databaseConnection:
+   *                   type: boolean
+   *                   description: Whether the database connection is healthy
+   *                 environment:
+   *                   type: object
+   *                   description: Environment variables
+   *                 timestamp:
+   *                   type: string
+   *                   format: date-time
+   *                   description: Time of the health check
+   *       500:
+   *         description: Server error response
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 serverAccess:
+   *                   type: boolean
+   *                 databaseConnection:
+   *                   type: boolean
+   *                 error:
+   *                   type: string
+   *                 timestamp:
+   *                   type: string
+   *                   format: date-time
    */
-  router.get('/healthz', (req: express.Request, res: express.Response) => {
-    res.status(200).send('OK')
-  })
+  router.get('/healthz', HealthCheckMiddleware)
 
   return router
 }
