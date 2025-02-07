@@ -27,10 +27,10 @@ ENV AWS_TARGET_ACCOUNT_ROLE_NAME=$AWS_TARGET_ACCOUNT_ROLE_NAME
 COPY ./dist ./dist
 
 # Copy package files
-COPY package.json yarn.lock ./
+COPY package.json ./
 
 # Install production dependencies only
-RUN yarn install --production --frozen-lockfile
+RUN yarn install --production
 
 # Start the application
 CMD [ "yarn", "start:webprod"]
