@@ -28,6 +28,24 @@ const serverLogger = new Logger('Server')
  * @throws Error if connection fails or invalid TENANT_DB configuration
  */
 const connectToDatabase = async (config: CCFConfig): Promise<void> => {
+  // Debug logging for all relevant environment variables
+  serverLogger.info('Debug: Environment Variables:')
+  serverLogger.info('----------------------------------------')
+  serverLogger.info(`TENANT_DB: "${config.TENANT_DB}"`)
+  serverLogger.info(
+    `DOCUMENTDB_URI: "${config.DOCUMENTDB?.URI?.substring(0, 20)}..."`,
+  ) // Only show start of URI for security
+  serverLogger.info(
+    `DOCUMENTDB_SSL_CA_FILE exists: ${!!config.DOCUMENTDB?.SSL_CA_FILE}`,
+  )
+  serverLogger.info(
+    `DOCUMENTDB_USERNAME exists: ${!!config.DOCUMENTDB?.USERNAME}`,
+  )
+  serverLogger.info(
+    `DOCUMENTDB_PASSWORD exists: ${!!config.DOCUMENTDB?.PASSWORD}`,
+  )
+  serverLogger.info('----------------------------------------')
+
   if (config.TENANT_DB === 'MONGODB') {
     // Connect to MongoDB using Mongoose
     await mongoose.connect(config.MONGODB.URI, {
