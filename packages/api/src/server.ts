@@ -20,7 +20,6 @@ import {
   setConfig,
 } from '@cloud-carbon-footprint/common'
 import { MongoDbCacheManager } from '@cloud-carbon-footprint/app'
-import { DocumentDbCacheManager } from '@cloud-carbon-footprint/app'
 import swaggerDocs from './utils/swagger'
 import auth from './utils/auth'
 
@@ -31,6 +30,7 @@ const serverLogger = new Logger('Server')
 const overrideVars = (config: CCFConfig): CCFConfig => {
   const overrideConfig = {
     ...config,
+    CACHE_MODE: '', // Disable caching
     TENANT_DB: 'DOCUMENTDB' as 'MONGODB' | 'DOCUMENTDB',
     DOCUMENTDB: {
       ...config.DOCUMENTDB,
@@ -87,12 +87,6 @@ const connectToDatabase = async (config: CCFConfig): Promise<void> => {
       retryWrites: false, // DocumentDB doesn't support retryWrites
     })
     serverLogger.info('Successfully connected to DocumentDB using Mongoose')
-
-    // Also connect using DocumentDbCacheManager for cache operations
-    await DocumentDbCacheManager.createDbConnection()
-    serverLogger.info(
-      'Successfully connected to DocumentDB for tenant and cache operations',
-    )
   } else {
     throw new Error(`Invalid TENANT_DB configuration: ${config.TENANT_DB}`)
   }
@@ -109,7 +103,6 @@ const disconnectFromDatabase = async (config: CCFConfig): Promise<void> => {
     serverLogger.info('\nMongoDB connections closed')
   } else if (config.TENANT_DB === 'DOCUMENTDB') {
     await mongoose.disconnect()
-    await DocumentDbCacheManager.mongoClient.close()
     serverLogger.info('\nDocumentDB connection closed')
   }
 }
