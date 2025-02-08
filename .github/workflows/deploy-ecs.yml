@@ -132,10 +132,15 @@ jobs:
 
       - name: Build Packages
         run: |
-          # Build common package first
+          # First build all dependencies in order
+          echo "Building common package..."
           cd packages/common
           yarn build
-          # Then build API package
+
+          echo "Building app package..."
+          cd ../app
+          yarn build
+          # Finally build API package
           cd ../api
           yarn build
           cp ../../yarn.lock .
