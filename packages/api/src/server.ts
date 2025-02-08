@@ -12,7 +12,13 @@ import cors, { CorsOptions } from 'cors'
 import mongoose from 'mongoose'
 
 import { createRouter } from './api'
-import { Logger, configLoader, CCFConfig } from '@cloud-carbon-footprint/common'
+import {
+  Logger,
+  configLoader,
+  CCFConfig,
+  setConfig,
+  Config,
+} from '@cloud-carbon-footprint/common'
 import { MongoDbCacheManager } from '@cloud-carbon-footprint/app'
 import { DocumentDbCacheManager } from '@cloud-carbon-footprint/app'
 import swaggerDocs from './utils/swagger'
@@ -106,7 +112,13 @@ httpApp.use(express.json())
 
 // Convert server startup to async function
 const startServer = async () => {
-  const config = configLoader()
+  // Force refresh configuration after environment variables are set
+  const config = Config()
+  setConfig(config)
+
+  serverLogger.info('Debug: Configuration loaded:')
+  serverLogger.info(`TENANT_DB from config: ${config.TENANT_DB}`)
+  serverLogger.info(`Environment TENANT_DB: ${process.env.TENANT_DB}`)
 
   try {
     // Establish database connection
