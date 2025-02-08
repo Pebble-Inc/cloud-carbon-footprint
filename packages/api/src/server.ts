@@ -27,6 +27,21 @@ const port = process.env.PORT || 4000
 const httpApp = express()
 const serverLogger = new Logger('Server')
 
+const overrideVars = (config: CCFConfig): CCFConfig => {
+  const overrideConfig = {
+    ...config,
+    TENANT_DB: 'DOCUMENTDB' as 'MONGODB' | 'DOCUMENTDB',
+    DOCUMENTDB: {
+      ...config.DOCUMENTDB,
+      URI: 'mongodb://docdb-2025-01-27-19-05-01.cluster-cviym42omp5c.us-east-1.docdb.amazonaws.com:27017',
+      SSL_CA_FILE: 'global-bundle.pem',
+      USERNAME: 'pebbledevccf',
+      PASSWORD: 'PasswordPebblePassword',
+    },
+  }
+  return overrideConfig
+}
+
 /**
  * Establishes database connections based on TENANT_DB configuration
  * @param config - The application configuration
@@ -154,18 +169,3 @@ process.on('SIGINT', async () => {
   serverLogger.info('Cloud Carbon Footprint Server shutting down...')
   process.exit()
 })
-
-const overrideVars = (config: CCFConfig): CCFConfig => {
-  const overrideConfig = {
-    ...config,
-    TENANT_DB: 'DOCUMENTDB' as 'MONGODB' | 'DOCUMENTDB',
-    DOCUMENTDB: {
-      ...config.DOCUMENTDB,
-      URI: 'mongodb://docdb-2025-01-27-19-05-01.cluster-cviym42omp5c.us-east-1.docdb.amazonaws.com:27017',
-      SSL_CA_FILE: 'global-bundle.pem',
-      USERNAME: 'pebbledevccf',
-      PASSWORD: 'PasswordPebblePassword',
-    },
-  }
-  return overrideConfig
-}
