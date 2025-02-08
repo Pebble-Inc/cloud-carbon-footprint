@@ -3,6 +3,9 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /usr/src/app
 
+# Create directory for SSL certificate
+RUN mkdir -p certs
+
 # Accept environment variables as build arguments
 ARG DOCUMENTDB_URI
 ARG DOCUMENTDB_USERNAME
@@ -25,6 +28,9 @@ ENV CACHE_MODE=$CACHE_MODE
 ENV TENANT_DB=$TENANT_DB
 ENV AWS_AUTH_MODE=$AWS_AUTH_MODE
 ENV AWS_TARGET_ACCOUNT_ROLE_NAME=$AWS_TARGET_ACCOUNT_ROLE_NAME
+
+# Copy SSL certificate to certs directory
+COPY global-bundle.pem ./certs/global-bundle.pem
 
 # Copy built application
 COPY ./dist ./dist
