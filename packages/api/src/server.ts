@@ -34,21 +34,9 @@ const serverLogger = new Logger('Server')
  */
 const connectToDatabase = async (config: CCFConfig): Promise<void> => {
   // Debug logging for all relevant environment variables
-  serverLogger.info('Debug: Environment Variables:')
+  serverLogger.info('Debug: Config Variables:')
   serverLogger.info('----------------------------------------')
-  serverLogger.info(`TENANT_DB: "${config.TENANT_DB}"`)
-  serverLogger.info(
-    `DOCUMENTDB_URI: "${config.DOCUMENTDB?.URI?.substring(0, 20)}..."`,
-  ) // Only show start of URI for security
-  serverLogger.info(
-    `DOCUMENTDB_SSL_CA_FILE exists: ${!!config.DOCUMENTDB?.SSL_CA_FILE}`,
-  )
-  serverLogger.info(
-    `DOCUMENTDB_USERNAME exists: ${!!config.DOCUMENTDB?.USERNAME}`,
-  )
-  serverLogger.info(
-    `DOCUMENTDB_PASSWORD exists: ${!!config.DOCUMENTDB?.PASSWORD}`,
-  )
+  serverLogger.info(`${JSON.stringify(config)}`)
   serverLogger.info('----------------------------------------')
 
   if (config.TENANT_DB === 'MONGODB') {
@@ -111,18 +99,13 @@ httpApp.use(express.json())
 
 // Convert server startup to async function
 const startServer = async () => {
-  const config = configLoader()
+  const config = overrideVars(configLoader())
+
   setConfig(config)
 
-  serverLogger.info('Raw environment variables:')
-  Object.keys(process.env).forEach((key) => {
-    serverLogger.info(`${key}: ${process.env[key]}`)
-  })
-
-  serverLogger.info('Debug: Configuration loaded:')
-  Object.keys(config).forEach((key) => {
-    serverLogger.info(`${key}: ${config[key]}`)
-  })
+  serverLogger.info('**Debug: Configuration loaded:**')
+  serverLogger.info(`${JSON.stringify(config)}`)
+  serverLogger.info('**End of Configuration**')
 
   try {
     // Establish database connection
@@ -171,3 +154,18 @@ process.on('SIGINT', async () => {
   serverLogger.info('Cloud Carbon Footprint Server shutting down...')
   process.exit()
 })
+
+const overrideVars = (config: CCFConfig): CCFConfig => {
+  const overrideConfig = {
+    ...config,
+    TENANT_DB: 'DOCUMENTDB' as 'MONGODB' | 'DOCUMENTDB',
+    DOCUMENTDB: {
+      ...config.DOCUMENTDB,
+      URI: 'mongodb://docdb-2025-01-27-19-05-01.cluster-cviym42omp5c.us-east-1.docdb.amazonaws.com:27017',
+      SSL_CA_FILE: 'global-bundle.pem',
+      USERNAME: 'pebbledevccf',
+      PASSWORD: 'PasswordPebblePassword',
+    },
+  }
+  return overrideConfig
+}
