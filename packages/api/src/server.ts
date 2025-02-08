@@ -10,7 +10,6 @@ import express from 'express'
 import helmet from 'helmet'
 import cors, { CorsOptions } from 'cors'
 import mongoose from 'mongoose'
-import fs from 'fs'
 
 import { createRouter } from './api'
 import {
@@ -19,7 +18,6 @@ import {
   CCFConfig,
   setConfig,
 } from '@cloud-carbon-footprint/common'
-import getConfig from '@cloud-carbon-footprint/common/dist/Config'
 import { MongoDbCacheManager } from '@cloud-carbon-footprint/app'
 import { DocumentDbCacheManager } from '@cloud-carbon-footprint/app'
 import swaggerDocs from './utils/swagger'
@@ -113,7 +111,7 @@ httpApp.use(express.json())
 
 // Convert server startup to async function
 const startServer = async () => {
-  const config = getConfig()
+  const config = configLoader()
   setConfig(config)
 
   serverLogger.info('Raw environment variables:')
