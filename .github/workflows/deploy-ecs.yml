@@ -93,6 +93,9 @@ jobs:
           AWS_AUTH_MODE=$(echo "$SECRET_ECS" | jq -r '.AWS_AUTH_MODE')
           AWS_TARGET_ACCOUNT_ROLE_NAME=$(echo "$SECRET_ECS" | jq -r '.AWS_TARGET_ACCOUNT_ROLE_NAME')
 
+          # Add debug echo (masked)
+          echo "TENANT_DB value exists: $([[ ! -z "$TENANT_DB" ]] && echo "true" || echo "false")"
+          
           # Export environment variables for Docker build
           echo "DOCUMENTDB_URI=$DOCUMENTDB_URI" >> $GITHUB_ENV
           echo "DOCUMENTDB_USERNAME=$DOCUMENTDB_USERNAME" >> $GITHUB_ENV

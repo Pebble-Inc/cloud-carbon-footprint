@@ -13,6 +13,9 @@ ARG TENANT_DB
 ARG AWS_AUTH_MODE
 ARG AWS_TARGET_ACCOUNT_ROLE_NAME
 
+# Verify build args are passed (will fail build if not set)
+RUN test -n "$TENANT_DB" || (echo "TENANT_DB build arg not set" && false)
+
 # Export them as environment variables at runtime
 ENV DOCUMENTDB_URI=$DOCUMENTDB_URI
 ENV DOCUMENTDB_USERNAME=$DOCUMENTDB_USERNAME
