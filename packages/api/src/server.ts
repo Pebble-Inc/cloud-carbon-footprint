@@ -49,7 +49,6 @@ const overrideVars = (config: CCFConfig): CCFConfig => {
  * @throws Error if connection fails or invalid TENANT_DB configuration
  */
 const connectToDatabase = async (config: CCFConfig): Promise<void> => {
-
   if (config.TENANT_DB === 'MONGODB') {
     // Connect to MongoDB using Mongoose
     await mongoose.connect(config.MONGODB.URI, {
