@@ -126,6 +126,7 @@ jobs:
       - name: Download DocumentDB Certificate Bundle
         run: |
           echo "Downloading AWS DocumentDB certificate bundle..."
+          cd packages/api
           curl -o global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
           echo "Certificate bundle downloaded successfully"
 
