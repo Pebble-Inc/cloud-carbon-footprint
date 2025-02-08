@@ -23,14 +23,14 @@ ENV TENANT_DB=$TENANT_DB
 ENV AWS_AUTH_MODE=$AWS_AUTH_MODE
 ENV AWS_TARGET_ACCOUNT_ROLE_NAME=$AWS_TARGET_ACCOUNT_ROLE_NAME
 
-# Copy built application first (it's already built by the CI pipeline)
+# Copy built application
 COPY ./dist ./dist
 
 # Copy package files
 COPY package.json ./
 
 # Install production dependencies only
-RUN yarn install --production
+RUN yarn install --production --frozen-lockfile
 
 # Start the application
-CMD [ "yarn", "start:webprod"]
+CMD [ "yarn", "start:webprod" ]
