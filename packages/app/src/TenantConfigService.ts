@@ -9,7 +9,7 @@ import {
   Logger,
 } from '@cloud-carbon-footprint/common'
 
-export class TenantConfigService {
+class TenantConfigService {
   private readonly logger: Logger
 
   constructor() {
@@ -90,3 +90,5 @@ export class TenantConfigService {
     }
   }
 }
+
+export default TenantConfigService
