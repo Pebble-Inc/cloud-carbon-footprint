@@ -41,7 +41,7 @@
     "start": "yarn start:web",
     "start:prod": "yarn start:webprod",
     "start:web": "NODE_OPTIONS='--max-old-space-size=8192' ts-node-dev src/server.ts",
-    "start:webprod": "NODE_ENV=production ts-node src/server.ts",
+    "start:webprod": "NODE_ENV=production node dist/server.js",
     "create-docker-secrets": "./create_docker_secrets.sh"
   },
   "devDependencies": {
@@ -68,6 +68,7 @@
     "source-map-support": "^0.5.19",
     "supertest": "^6.1.3",
     "ts-jest": "^27.1.2",
+    "ts-node": "^10.4.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^4.6.2"
   },
@@ -81,8 +82,7 @@
     "module-alias": "^2.2.2",
     "mongoose": "^8.9.5",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^4.6.2",
-    "ts-node": "^10.4.0"
+    "swagger-ui-express": "^4.6.2"
   },
   "lint-staged": {
     "*.{js,ts}": [
