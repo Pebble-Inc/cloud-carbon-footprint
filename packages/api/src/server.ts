@@ -17,7 +17,6 @@ import {
   configLoader,
   CCFConfig,
   setConfig,
-  Config,
 } from '@cloud-carbon-footprint/common'
 import { MongoDbCacheManager } from '@cloud-carbon-footprint/app'
 import { DocumentDbCacheManager } from '@cloud-carbon-footprint/app'
@@ -112,13 +111,18 @@ httpApp.use(express.json())
 
 // Convert server startup to async function
 const startServer = async () => {
-  // Force refresh configuration after environment variables are set
-  const config = Config()
+  const config = configLoader()
   setConfig(config)
 
+  serverLogger.info('Raw environment variables:')
+  Object.keys(process.env).forEach((key) => {
+    serverLogger.info(`${key}: ${process.env[key]}`)
+  })
+
   serverLogger.info('Debug: Configuration loaded:')
-  serverLogger.info(`TENANT_DB from config: ${config.TENANT_DB}`)
-  serverLogger.info(`Environment TENANT_DB: ${process.env.TENANT_DB}`)
+  Object.keys(config).forEach((key) => {
+    serverLogger.info(`${key}: ${config[key]}`)
+  })
 
   try {
     // Establish database connection
