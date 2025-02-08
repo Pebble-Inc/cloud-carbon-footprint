@@ -123,6 +123,12 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
+      - name: Download DocumentDB Certificate Bundle
+        run: |
+          echo "Downloading AWS DocumentDB certificate bundle..."
+          curl -o global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+          echo "Certificate bundle downloaded successfully"
+
       - name: Build Packages
         run: |
           # Build common package first
@@ -146,7 +152,6 @@ jobs:
             DOCUMENTDB_URI=${{ env.DOCUMENTDB_URI }}
             DOCUMENTDB_USERNAME=${{ env.DOCUMENTDB_USERNAME }}
             DOCUMENTDB_PASSWORD=${{ env.DOCUMENTDB_PASSWORD }}
-            DOCUMENTDB_SSL_CA_FILE=${{ env.DOCUMENTDB_SSL_CA_FILE }}
             CACHE_MODE=${{ env.CACHE_MODE }}
             TENANT_DB=${{ env.TENANT_DB }}
             AWS_AUTH_MODE=${{ env.AWS_AUTH_MODE }}

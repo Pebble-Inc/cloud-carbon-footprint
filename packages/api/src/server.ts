@@ -10,6 +10,7 @@ import express from 'express'
 import helmet from 'helmet'
 import cors, { CorsOptions } from 'cors'
 import mongoose from 'mongoose'
+import fs from 'fs'
 
 import { createRouter } from './api'
 import {
@@ -34,7 +35,7 @@ const overrideVars = (config: CCFConfig): CCFConfig => {
     DOCUMENTDB: {
       ...config.DOCUMENTDB,
       URI: 'mongodb://docdb-2025-01-27-19-05-01.cluster-cviym42omp5c.us-east-1.docdb.amazonaws.com:27017',
-      SSL_CA_FILE: 'global-bundle.pem',
+      SSL_CA_FILE: '/usr/src/app/certs/global-bundle.pem',
       USERNAME: 'pebbledevccf',
       PASSWORD: 'PasswordPebblePassword',
     },
@@ -48,11 +49,6 @@ const overrideVars = (config: CCFConfig): CCFConfig => {
  * @throws Error if connection fails or invalid TENANT_DB configuration
  */
 const connectToDatabase = async (config: CCFConfig): Promise<void> => {
-  // Debug logging for all relevant environment variables
-  serverLogger.info('Debug: Config Variables:')
-  serverLogger.info('----------------------------------------')
-  serverLogger.info(`${JSON.stringify(config)}`)
-  serverLogger.info('----------------------------------------')
 
   if (config.TENANT_DB === 'MONGODB') {
     // Connect to MongoDB using Mongoose
@@ -65,7 +61,23 @@ const connectToDatabase = async (config: CCFConfig): Promise<void> => {
     await MongoDbCacheManager.createDbConnection()
     serverLogger.info('Successfully connected MongoDB for cache operations')
   } else if (config.TENANT_DB === 'DOCUMENTDB') {
+    // Log SSL certificate path and check if file exists
+    serverLogger.info(
+      `Attempting to connect to DocumentDB with SSL certificate at: ${config.DOCUMENTDB.SSL_CA_FILE}`,
+    )
+    try {
+      const fileExists = fs.existsSync(config.DOCUMENTDB.SSL_CA_FILE)
+      serverLogger.info(`SSL certificate file exists: ${fileExists}`)
+      if (fileExists) {
+        const stats = fs.statSync(config.DOCUMENTDB.SSL_CA_FILE)
+        serverLogger.info(`SSL certificate file size: ${stats.size} bytes`)
+      }
+    } catch (error) {
+      serverLogger.error('Error checking SSL certificate file', error)
+    }
+
     // Connect to DocumentDB using Mongoose with SSL configuration
+    serverLogger.info('Attempting to connect to DocumentDB...')
     await mongoose.connect(config.DOCUMENTDB.URI, {
       serverSelectionTimeoutMS: 5000,
       tls: true,
