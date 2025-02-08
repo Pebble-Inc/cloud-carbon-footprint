@@ -135,7 +135,10 @@ jobs:
           # Build common package first
           cd packages/common
           yarn build
-          # Then build API package
+          # Then build app package
+          cd ../app
+          yarn build
+          # Finally build API package
           cd ../api
           yarn build
           cp ../../yarn.lock .

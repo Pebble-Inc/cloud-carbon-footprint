@@ -9,10 +9,7 @@ import {
   Logger,
 } from '@cloud-carbon-footprint/common'
 
-// Debug log when module is loaded
-console.log('Debug: Loading TenantConfigService module')
-
-class TenantConfigService {
+export class TenantConfigService {
   private readonly logger: Logger
 
   constructor() {
@@ -94,7 +91,3 @@ class TenantConfigService {
     }
   }
 }
-
-// Debug log what we're exporting
-console.log('Debug: Exporting TenantConfigService:', TenantConfigService)
-export default TenantConfigService
