@@ -18,6 +18,10 @@ export const createRouter = (config?: CCFConfig) => {
   setConfig(config)
   const router = express.Router()
 
+  // Add debug logging
+  console.log('Debug: TenantConfigService:', TenantConfigService)
+  console.log('Debug: TenantConfigService type:', typeof TenantConfigService)
+
   const tenantConfigService = new TenantConfigService()
 
   // POST /tenant-configs endpoint before applying tenant middleware
