@@ -6,6 +6,9 @@ WORKDIR /usr/src/app
 # Create directory for SSL certificate
 RUN mkdir -p certs
 
+# Create package directories
+RUN mkdir -p packages/api packages/app packages/common
+
 # Accept environment variables as build arguments
 ARG DOCUMENTDB_URI
 ARG DOCUMENTDB_USERNAME
@@ -32,11 +35,16 @@ ENV AWS_TARGET_ACCOUNT_ROLE_NAME=$AWS_TARGET_ACCOUNT_ROLE_NAME
 # Copy SSL certificate to certs directory
 COPY global-bundle.pem ./certs/global-bundle.pem
 
-# Copy built application
-COPY ./dist ./dist
+# Copy package files for workspace
+COPY package.json yarn.lock ./
+COPY packages/api/package.json ./packages/api/
+COPY packages/app/package.json ./packages/app/
+COPY packages/common/package.json ./packages/common/
 
-# Copy package files
-COPY package.json ./
+# Copy built files
+COPY packages/api/dist ./packages/api/dist
+COPY packages/app/dist ./packages/app/dist
+COPY packages/common/dist ./packages/common/dist
 
 # Install production dependencies only
 RUN yarn install --production --frozen-lockfile
