@@ -36,15 +36,16 @@ ENV AWS_TARGET_ACCOUNT_ROLE_NAME=$AWS_TARGET_ACCOUNT_ROLE_NAME
 COPY global-bundle.pem ./certs/global-bundle.pem
 
 # Copy package files for workspace
-COPY package.json yarn.lock ./
-COPY packages/api/package.json ./packages/api/
-COPY packages/app/package.json ./packages/app/
-COPY packages/common/package.json ./packages/common/
+COPY ../../package.json ./
+COPY ../../yarn.lock ./
+COPY package.json ./packages/api/
+COPY ../app/package.json ./packages/app/
+COPY ../common/package.json ./packages/common/
 
 # Copy built files
-COPY packages/api/dist ./packages/api/dist
-COPY packages/app/dist ./packages/app/dist
-COPY packages/common/dist ./packages/common/dist
+COPY dist ./packages/api/dist
+COPY ../app/dist ./packages/app/dist
+COPY ../common/dist ./packages/common/dist
 
 # Install production dependencies only
 RUN yarn install --production --frozen-lockfile

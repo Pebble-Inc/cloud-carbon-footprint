@@ -148,7 +148,8 @@ jobs:
       - name: Build, Tag, and Push Docker Image to Amazon ECR
         uses: docker/build-push-action@v4
         with:
-          context: ./packages/api
+          context: .
+          file: ./packages/api/Dockerfile
           push: true
           tags: |
             ${{ secrets.AWS_ECR_REPO }}:${{ env.DTAG_BRANCH }}
