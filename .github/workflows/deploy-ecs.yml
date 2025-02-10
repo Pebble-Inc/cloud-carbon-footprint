@@ -15,7 +15,7 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
 
-      - name: Set Build Parameters
+      - name: Set Build Parameters 
         id: dtag
         run: |
           set -e
