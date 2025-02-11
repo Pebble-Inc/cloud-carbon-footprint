@@ -14,8 +14,8 @@ import {
   Tags,
 } from '@cloud-carbon-footprint/app'
 
-import TenantConfigService from './TenantConfigServiceApi';
-import TestConnectionService from './TestConnectionService';
+import TenantConfigService from './TenantConfigServiceApi'
+import TestConnectionService from './TestConnectionService'
 import {
   EstimationRequestValidationError,
   Logger,
@@ -24,7 +24,7 @@ import {
   configLoader,
 } from '@cloud-carbon-footprint/common'
 
-import {mergeConfig} from "./mergeConfig";
+import { mergeConfig } from './mergeConfig'
 
 const apiLogger = new Logger('api')
 
@@ -182,6 +182,12 @@ export const TestConnectionMiddleware = async (
     // Skip tenant config validation and directly test the AWS connection
     const { configDoc } = req.body
     const testConnectionService = new TestConnectionService()
+    const config = configLoader()
+
+    apiLogger.info(`**debug: test connection config: ${JSON.stringify(config)}`)
+    apiLogger.info(
+      `**debug: test connection configDoc: ${JSON.stringify(configDoc)}`,
+    )
 
     // Only test AWS connection for now
     await testConnectionService.testAWSConnection(configDoc?.AWS)
