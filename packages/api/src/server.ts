@@ -1,7 +1,3 @@
-/*
- * © 2021 Thoughtworks, Inc.
- */
-
 if (process.env.NODE_ENV === 'production') {
   require('module-alias/register')
 }
@@ -27,31 +23,29 @@ const port = process.env.PORT || 4000
 const httpApp = express()
 const serverLogger = new Logger('Server')
 
-  const  DOCUMENTDB={
-      URI: 'mongodb://docdb-2025-01-27-19-05-01.cluster-cviym42omp5c.us-east-1.docdb.amazonaws.com:27017',
-      SSL_CA_FILE: '/usr/src/app/certs/global-bundle.pem',
-      USERNAME: 'pebbledevccf',
-      PASSWORD: 'PasswordPebblePassword',
-  };
+const DOCUMENTDB = {
+  URI: 'mongodb://docdb-2025-01-27-19-05-01.cluster-cviym42omp5c.us-east-1.docdb.amazonaws.com:27017',
+  SSL_CA_FILE: '/usr/src/app/certs/global-bundle.pem',
+  USERNAME: 'pebbledevccf',
+  PASSWORD: 'PasswordPebblePassword',
+}
+
 /**
  * Establishes database connections based on TENANT_DB configuration
  * @param config - The application configuration
  * @throws Error if connection fails or invalid TENANT_DB configuration
  */
 const connectToDatabase = async (config: CCFConfig): Promise<void> => {
-
-      
-
-    await mongoose.connect(DOCUMENTDB?.URI, {
-      serverSelectionTimeoutMS: 5000,
-      tls: true,
-      tlsCAFile: DOCUMENTDB?.SSL_CA_FILE,
-      authSource: 'admin',
-      user: DOCUMENTDB?.USERNAME,
-      pass: DOCUMENTDB?.PASSWORD,
-      retryWrites: false, // DocumentDB doesn't support retryWrites
-    })
-    serverLogger.info('Successfully connected to DocumentDB using Mongoose')
+  await mongoose.connect(DOCUMENTDB?.URI, {
+    serverSelectionTimeoutMS: 5000,
+    tls: true,
+    tlsCAFile: DOCUMENTDB?.SSL_CA_FILE,
+    authSource: 'admin',
+    user: DOCUMENTDB?.USERNAME,
+    pass: DOCUMENTDB?.PASSWORD,
+    retryWrites: false, // DocumentDB doesn't support retryWrites
+  })
+  serverLogger.info('Successfully connected to DocumentDB using Mongoose')
 }
 
 /**
@@ -59,7 +53,7 @@ const connectToDatabase = async (config: CCFConfig): Promise<void> => {
  * @param config - The application configuration
  */
 const disconnectFromDatabase = async (config: CCFConfig): Promise<void> => {
-    await mongoose.disconnect()
+  await mongoose.disconnect()
 }
 
 if (process.env.NODE_ENV === 'production') {
@@ -71,10 +65,14 @@ httpApp.use(helmet())
 // Add JSON body parser middleware
 httpApp.use(express.json())
 
+// Health Check Route with /api prefix
+httpApp.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() })
+})
+
 // Convert server startup to async function
 const startServer = async () => {
-  const config =configLoader();
-
+  const config = configLoader()
   setConfig(config)
 
   serverLogger.info('**Debug: Configuration loaded:**')
