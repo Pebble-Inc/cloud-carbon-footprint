@@ -1,8 +1,8 @@
-import { CCFConfig, configLoader } from "@cloud-carbon-footprint/common"; 
+import { CCFConfig, configLoader } from '@cloud-carbon-footprint/common'
 
 export const mergeConfig = (ccfConfig: Partial<CCFConfig>) => {
-      let _config = configLoader();
-	_config = {
+  let _config = configLoader()
+  _config = {
     ..._config,
     ...ccfConfig,
     AWS: {

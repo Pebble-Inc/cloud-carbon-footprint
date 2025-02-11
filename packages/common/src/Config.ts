@@ -175,9 +175,9 @@ const getConfig = (): CCFConfig => ({
     IS_AWS_GLOBAL: checkAthenaRegionISAWSGlobal(getEnvVar('AWS_ATHENA_REGION')),
     accounts: JSON.parse(getAWSAccounts()) || [],
     authentication: {
-      mode: getEnvVar('AWS_AUTH_MODE') || 'default',
+      mode: 'AWS',
       options: {
-        targetRoleName: getEnvVar('AWS_TARGET_ACCOUNT_ROLE_NAME'),
+        targetRoleName: 'ccf-app',
         proxyAccountId: getEnvVar('AWS_PROXY_ACCOUNT_ID') || '',
         proxyRoleName: getEnvVar('AWS_PROXY_ROLE_NAME') || '',
       },

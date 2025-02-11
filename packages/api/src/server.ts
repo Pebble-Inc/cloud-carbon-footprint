@@ -2,22 +2,15 @@ if (process.env.NODE_ENV === 'production') {
   require('module-alias/register')
 }
 
+import cors, { CorsOptions } from 'cors'
 import express from 'express'
 import helmet from 'helmet'
-import cors, { CorsOptions } from 'cors'
 import mongoose from 'mongoose'
-import fs from 'fs'
 
+import { Logger, configLoader, setConfig } from '@cloud-carbon-footprint/common'
 import { createRouter } from './api'
-import {
-  Logger,
-  configLoader,
-  CCFConfig,
-  setConfig,
-} from '@cloud-carbon-footprint/common'
-import { MongoDbCacheManager } from '@cloud-carbon-footprint/app'
-import swaggerDocs from './utils/swagger'
 import auth from './utils/auth'
+import swaggerDocs from './utils/swagger'
 
 const port = process.env.PORT || 4000
 const httpApp = express()
@@ -35,7 +28,7 @@ const DOCUMENTDB = {
  * @param config - The application configuration
  * @throws Error if connection fails or invalid TENANT_DB configuration
  */
-const connectToDatabase = async (config: CCFConfig): Promise<void> => {
+const connectToDatabase = async (): Promise<void> => {
   await mongoose.connect(DOCUMENTDB?.URI, {
     serverSelectionTimeoutMS: 5000,
     tls: true,
@@ -52,7 +45,7 @@ const connectToDatabase = async (config: CCFConfig): Promise<void> => {
  * Disconnects from the database based on TENANT_DB configuration
  * @param config - The application configuration
  */
-const disconnectFromDatabase = async (config: CCFConfig): Promise<void> => {
+const disconnectFromDatabase = async (): Promise<void> => {
   await mongoose.disconnect()
 }
 
@@ -81,7 +74,7 @@ const startServer = async () => {
 
   try {
     // Establish database connection
-    await connectToDatabase(config)
+    await connectToDatabase()
 
     if (process.env.ENABLE_CORS) {
       const corsOptions: CorsOptions = {
@@ -121,8 +114,7 @@ startServer().catch((error) => {
 
 // Instructions for graceful shutdown
 process.on('SIGINT', async () => {
-  const config = configLoader()
-  await disconnectFromDatabase(config)
+  await disconnectFromDatabase()
   serverLogger.info('Cloud Carbon Footprint Server shutting down...')
   process.exit()
 })
