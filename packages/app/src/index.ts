@@ -7,7 +7,7 @@ export { default as CacheManager } from './CacheManager'
 export { default as MongoDbCacheManager } from './MongoDbCacheManager'
 export { default as LocalCacheManager } from './LocalCacheManager'
 export { default as GoogleCloudCacheManager } from './GoogleCloudCacheManager'
-export { TenantConfigService } from './TenantConfigService'
+/*export { default as TenantConfigService } from './TenantConfigService'*/
 
 export {
   EstimationRequest,

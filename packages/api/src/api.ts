@@ -4,7 +4,7 @@
 
 import express from 'express'
 import { setConfig, CCFConfig } from '@cloud-carbon-footprint/common'
-import { TenantConfigService } from '@cloud-carbon-footprint/app'
+import  TenantConfigService  from './TenantConfigServiceApi'
 import {
   FootprintApiMiddleware,
   EmissionsApiMiddleware,

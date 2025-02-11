@@ -12,18 +12,19 @@ import {
   FootprintEstimatesRawRequest,
   RecommendationsRawRequest,
   Tags,
-  TenantConfigService,
-  TestConnectionService,
 } from '@cloud-carbon-footprint/app'
 
+import TenantConfigService from './TenantConfigServiceApi';
+import TestConnectionService from './TestConnectionService';
 import {
   EstimationRequestValidationError,
   Logger,
   PartialDataError,
   RecommendationsRequestValidationError,
   configLoader,
-  mergeConfig,
 } from '@cloud-carbon-footprint/common'
+
+import {mergeConfig} from "./mergeConfig";
 
 const apiLogger = new Logger('api')
 

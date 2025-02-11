@@ -27,69 +27,31 @@ const port = process.env.PORT || 4000
 const httpApp = express()
 const serverLogger = new Logger('Server')
 
-const overrideVars = (config: CCFConfig): CCFConfig => {
-  const overrideConfig = {
-    ...config,
-    CACHE_MODE: '', // Disable caching
-    TENANT_DB: 'DOCUMENTDB' as 'MONGODB' | 'DOCUMENTDB',
-    DOCUMENTDB: {
-      ...config.DOCUMENTDB,
+  const  DOCUMENTDB={
       URI: 'mongodb://docdb-2025-01-27-19-05-01.cluster-cviym42omp5c.us-east-1.docdb.amazonaws.com:27017',
       SSL_CA_FILE: '/usr/src/app/certs/global-bundle.pem',
       USERNAME: 'pebbledevccf',
       PASSWORD: 'PasswordPebblePassword',
-    },
-  }
-  return overrideConfig
-}
-
+  };
 /**
  * Establishes database connections based on TENANT_DB configuration
  * @param config - The application configuration
  * @throws Error if connection fails or invalid TENANT_DB configuration
  */
 const connectToDatabase = async (config: CCFConfig): Promise<void> => {
-  if (config.TENANT_DB === 'MONGODB') {
-    // Connect to MongoDB using Mongoose
-    await mongoose.connect(config.MONGODB.URI, {
-      serverSelectionTimeoutMS: 5000,
-    })
-    serverLogger.info('Successfully connected to MongoDB using Mongoose')
 
-    // Also connect using MongoDbCacheManager for cache operations
-    await MongoDbCacheManager.createDbConnection()
-    serverLogger.info('Successfully connected MongoDB for cache operations')
-  } else if (config.TENANT_DB === 'DOCUMENTDB') {
-    // Log SSL certificate path and check if file exists
-    serverLogger.info(
-      `Attempting to connect to DocumentDB with SSL certificate at: ${config.DOCUMENTDB.SSL_CA_FILE}`,
-    )
-    try {
-      const fileExists = fs.existsSync(config.DOCUMENTDB.SSL_CA_FILE)
-      serverLogger.info(`SSL certificate file exists: ${fileExists}`)
-      if (fileExists) {
-        const stats = fs.statSync(config.DOCUMENTDB.SSL_CA_FILE)
-        serverLogger.info(`SSL certificate file size: ${stats.size} bytes`)
-      }
-    } catch (error) {
-      serverLogger.error('Error checking SSL certificate file', error)
-    }
+      
 
-    // Connect to DocumentDB using Mongoose with SSL configuration
-    serverLogger.info('Attempting to connect to DocumentDB...')
-    await mongoose.connect(config.DOCUMENTDB.URI, {
+    await mongoose.connect(DOCUMENTDB?.URI, {
       serverSelectionTimeoutMS: 5000,
       tls: true,
-      tlsCAFile: config.DOCUMENTDB.SSL_CA_FILE,
+      tlsCAFile: DOCUMENTDB?.SSL_CA_FILE,
       authSource: 'admin',
-      user: config.DOCUMENTDB.USERNAME,
-      pass: config.DOCUMENTDB.PASSWORD,
+      user: DOCUMENTDB?.USERNAME,
+      pass: DOCUMENTDB?.PASSWORD,
       retryWrites: false, // DocumentDB doesn't support retryWrites
     })
     serverLogger.info('Successfully connected to DocumentDB using Mongoose')
-  } else {
-    throw new Error(`Invalid TENANT_DB configuration: ${config.TENANT_DB}`)
-  }
 }
 
 /**
@@ -97,14 +59,7 @@ const connectToDatabase = async (config: CCFConfig): Promise<void> => {
  * @param config - The application configuration
  */
 const disconnectFromDatabase = async (config: CCFConfig): Promise<void> => {
-  if (config.TENANT_DB === 'MONGODB') {
     await mongoose.disconnect()
-    await MongoDbCacheManager.mongoClient.close()
-    serverLogger.info('\nMongoDB connections closed')
-  } else if (config.TENANT_DB === 'DOCUMENTDB') {
-    await mongoose.disconnect()
-    serverLogger.info('\nDocumentDB connection closed')
-  }
 }
 
 if (process.env.NODE_ENV === 'production') {
@@ -118,7 +73,7 @@ httpApp.use(express.json())
 
 // Convert server startup to async function
 const startServer = async () => {
-  const config = overrideVars(configLoader())
+  const config =configLoader();
 
   setConfig(config)
 
