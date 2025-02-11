@@ -142,6 +142,7 @@ jobs:
           yarn build
           # Finally build API package
           cd ../api
+          yarn install
           yarn build
           cp ../../yarn.lock .
 
