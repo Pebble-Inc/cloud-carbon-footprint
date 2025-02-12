@@ -58,11 +58,6 @@ httpApp.use(helmet())
 // Add JSON body parser middleware
 httpApp.use(express.json())
 
-// Health Check Route with /api prefix
-httpApp.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() })
-})
-
 // Convert server startup to async function
 const startServer = async () => {
   const config = configLoader()

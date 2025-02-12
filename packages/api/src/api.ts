@@ -669,7 +669,7 @@ export const createRouter = (config?: CCFConfig) => {
 
   /**
    * @openapi
-   * /api/healthz:
+   * /api/health:
    *  get:
    *     tags:
    *     - Healthcheck
@@ -712,7 +712,7 @@ export const createRouter = (config?: CCFConfig) => {
    *                   type: string
    *                   format: date-time
    */
-  router.get('/healthz', HealthCheckMiddleware)
+  router.get('/health', HealthCheckMiddleware)
 
   return router
 }
