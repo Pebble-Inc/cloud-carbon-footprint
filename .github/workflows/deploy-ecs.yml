@@ -163,6 +163,9 @@ jobs:
             TENANT_DB=${{ env.TENANT_DB }}
             AWS_AUTH_MODE=${{ env.AWS_AUTH_MODE }}
             AWS_TARGET_ACCOUNT_ROLE_NAME=${{ env.AWS_TARGET_ACCOUNT_ROLE_NAME }}
+            AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID2 }}
+            AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY2 }}
+            AWS_DEFAULT_REGION=${{ secrets.AWS_REGION2 }}
           no-cache: true
           progress: plain
 
