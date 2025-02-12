@@ -24,7 +24,7 @@ jobs:
           echo "DTAG_BRANCH=$BRANCH_NAME" >> $GITHUB_ENV  
           echo "DTAG_SHA=$COMMIT_SHA" >> $GITHUB_ENV 
 
-      - name: Use Node.js 18
+      - name: Use Node.js 18 
         uses: actions/setup-node@v4
         with:
           node-version: '18'
