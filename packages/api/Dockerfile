@@ -10,7 +10,7 @@ RUN apk add --no-cache bash curl unzip \
     && ./aws/install \
     && rm -rf awscliv2.zip aws
 
-# Create directory for SSL certificate
+# Create directory for SSL certificate and AWS credentials
 RUN mkdir -p certs ~/.aws
 
 # Accept environment variables as build arguments
