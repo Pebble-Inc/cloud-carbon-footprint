@@ -175,12 +175,11 @@ jobs:
           if [[ "${{ env.DTAG_BRANCH }}" == "develop" ]]; then
             echo "ECS_CLUSTER=${{ secrets.ECS_DEV_CLUSTER }}" >> $GITHUB_ENV
             echo "ECS_SERVICE=${{ secrets.ECS_DEV_SERVICE }}" >> $GITHUB_ENV
-          elif [[ "${{ env.DTAG_BRANCH }}" == release/* ]]; then
-            echo "ECS_CLUSTER=${{ secrets.ECS_PROD_CLUSTER }}" >> $GITHUB_ENV
+          elif [[ "${{ env.DTAG_BRANCH }}" == release_* ]]; then
+               echo "ECS_CLUSTER=${{ secrets.ECS_PROD_CLUSTER }}" >> $GITHUB_ENV
             echo "ECS_SERVICE=${{ secrets.ECS_PROD_SERVICE }}" >> $GITHUB_ENV
           else
-            echo "ECS_CLUSTER=${{ secrets.ECS_DEV_CLUSTER }}" >> $GITHUB_ENV
-            echo "ECS_SERVICE=${{ secrets.ECS_DEV_SERVICE }}" >> $GITHUB_ENV
+            echo "Error detecting ECS cluster ..."
           fi
 
       - name: Deploy to ECS
