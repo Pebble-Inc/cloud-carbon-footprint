@@ -59,7 +59,7 @@ httpApp.use(helmet())
 httpApp.use(express.json())
 
 // Health Check Route with /api prefix
-httpApp.get('/api/health', (req, res) => {
+httpApp.get('/restapi/v1/ccf/health', (req, res) => {
   res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() })
 })
 
@@ -92,7 +92,7 @@ const startServer = async () => {
       httpApp.use(cors(corsOptions))
     }
 
-    httpApp.use('/api', createRouter())
+    httpApp.use('/restapi/v1/ccf', createRouter())
 
     httpApp.listen(port, () => {
       serverLogger.info(
