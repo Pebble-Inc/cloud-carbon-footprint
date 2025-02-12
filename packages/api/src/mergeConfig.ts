@@ -8,6 +8,9 @@ export const mergeConfig = (ccfConfig: Partial<CCFConfig>) => {
     AWS: {
       ..._config.AWS,
       ...ccfConfig.AWS,
+      authentication: {
+        mode: 'default',
+      },
     },
     GCP: {
       ..._config.GCP,
