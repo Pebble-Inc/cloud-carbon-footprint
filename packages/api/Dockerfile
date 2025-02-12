@@ -3,12 +3,14 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /usr/src/app
 
-# Install dependencies (bash, curl, unzip) and AWS CLI
-RUN apk add --no-cache bash curl unzip \
-    && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
-    && unzip awscliv2.zip \
-    && ./aws/install \
-    && rm -rf awscliv2.zip aws
+# Install dependencies and pip
+RUN apk add --no-cache bash curl python3 py3-pip
+
+# Install AWS CLI via pip
+RUN pip install --no-cache-dir --break-system-packages awscli
+
+# Verify AWS CLI installation
+RUN aws --version
 
 # Create directory for SSL certificate and AWS credentials
 RUN mkdir -p certs ~/.aws
