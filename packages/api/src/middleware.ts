@@ -92,6 +92,11 @@ export const FootprintApiMiddleware = async function (
     tags: req.query.tags as Tags,
   }
   apiLogger.info(`Footprint API request started.`)
+  apiLogger.info(
+    `**debug: config in footprint middleware: ${JSON.stringify(
+      configLoader(),
+    )}`,
+  )
   if (!rawRequest.groupBy) {
     apiLogger.warn('GroupBy parameter not specified, adopting default "day"')
     rawRequest.groupBy = 'day'
