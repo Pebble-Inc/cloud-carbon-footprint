@@ -22,7 +22,7 @@ import {
   PartialDataError,
   RecommendationsRequestValidationError,
   configLoader,
-  setConfig
+  setConfig,
 } from '@cloud-carbon-footprint/common'
 
 import { mergeConfig } from './mergeConfig'
@@ -56,10 +56,8 @@ export const TenantMiddleware = async function (
       return next()
     }
 
-    const newConfig=mergeConfig(config.configDoc)
-    setConfig(newConfig);
-    apiLogger.info(`global config: ${JSON.stringify(configLoader())}`)
-    apiLogger.info(`new config: ${JSON.stringify(newConfig)}`)
+    const newConfig = mergeConfig(config.configDoc)
+    setConfig(newConfig)
     next()
   } catch (error) {
     apiLogger.error('Error loading tenant configuration:', error)
@@ -184,12 +182,6 @@ export const TestConnectionMiddleware = async (
     // Skip tenant config validation and directly test the AWS connection
     const { configDoc } = req.body
     const testConnectionService = new TestConnectionService()
-    const config = configLoader()
-
-    apiLogger.info(`**debug: test connection config: ${JSON.stringify(config)}`)
-    apiLogger.info(
-      `**debug: test connection configDoc: ${JSON.stringify(configDoc)}`,
-    )
 
     // Only test AWS connection for now
     await testConnectionService.testAWSConnection(configDoc?.AWS)
