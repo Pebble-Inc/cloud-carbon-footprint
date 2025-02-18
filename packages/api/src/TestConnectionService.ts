@@ -2,13 +2,11 @@
  * © 2021 Thoughtworks, Inc.
  */
 
-import { AWSAccount } from '@cloud-carbon-footprint/aws'
+import { ChainableTemporaryCredentials } from 'aws-sdk'
 import {
   CCFConfig,
   AccountDetails,
-  configLoader,
   Logger,
-  GroupBy,
 } from '@cloud-carbon-footprint/common'
 
 export default class TestConnectionService {
@@ -43,11 +41,6 @@ export default class TestConnectionService {
       accountsToTest = accounts as AccountDetails[]
     }
 
-    // Use default services if none provided
-    const defaultConfig = configLoader()
-    const currentRegions =
-      awsConfig.CURRENT_REGIONS || defaultConfig.AWS.CURRENT_REGIONS
-
     this.serviceLogger.info('Starting AWS connection test...')
 
     // Test connection for each account
@@ -55,37 +48,25 @@ export default class TestConnectionService {
       try {
         this.serviceLogger.info(`Testing connection for account: ${account.id}`)
 
-        // Create AWS account instance to test credentials
-        const awsAccount = new AWSAccount(
-          account.id,
-          account.name || account.id,
-          currentRegions,
-        )
+        const credentials = new ChainableTemporaryCredentials({
+          params: {
+            RoleArn: `arn:aws:iam::${account.id}:role/ccf-app`,
+            RoleSessionName: 'ccf-app',
+          },
+        })
 
-        // Test service access by getting services
-        const region = currentRegions[0]
-        this.serviceLogger.info(`Testing AWS services in region: ${region}`)
+        // Test credentials using get() with callback
+        await new Promise((resolve, reject) => {
+          credentials.get((err) => {
+            if (err) {
+              reject(err)
+              return
+            }
+            resolve(null)
+          })
+        })
 
-        // Test actual AWS access by making a real API call
-        const endDate = new Date()
-        const startDate = new Date(endDate)
-        startDate.setDate(startDate.getDate() - 1)
-
-        this.serviceLogger.info(
-          `Testing data access from ${startDate.toISOString()} to ${endDate.toISOString()}`,
-        )
-
-        const data = await awsAccount.getDataForRegion(
-          region,
-          startDate,
-          endDate,
-          GroupBy.day,
-        )
-
-        this.serviceLogger.info(
-          `Data access test result: ${JSON.stringify(data)}`,
-        )
-
+        // If we get here, it means the credentials were successfully assumed
         this.serviceLogger.info(
           `Successfully connected to AWS account: ${account.id}`,
         )
