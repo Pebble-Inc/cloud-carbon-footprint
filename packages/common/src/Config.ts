@@ -262,11 +262,9 @@ const getConfig = (): CCFConfig => ({
     RESOURCE_TAG_NAMES: JSON.parse(getGCPResourceTagNames()),
   },
   AZURE: {
-    INCLUDE_ESTIMATES: process.env.AZURE_INCLUDE_ESTIMATES !== 'false',
-    USE_BILLING_DATA:
-      !!process.env.AZURE_USE_BILLING_DATA &&
-      process.env.AZURE_USE_BILLING_DATA !== 'false',
-    authentication: {
+    INCLUDE_ESTIMATES: true,
+    USE_BILLING_DATA: true,
+     authentication: {
       mode: getEnvVar('AZURE_AUTH_MODE') || 'default',
       clientId: getEnvVar('AZURE_CLIENT_ID') || '',
       clientSecret: getEnvVar('AZURE_CLIENT_SECRET') || '',

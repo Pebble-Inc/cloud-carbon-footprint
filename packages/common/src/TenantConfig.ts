@@ -124,7 +124,7 @@ const tenantConfigSchema = new Schema(
       AZURE: {
         type: {
           INCLUDE_ESTIMATES: { type: Boolean, default: true },
-          USE_BILLING_DATA: { type: Boolean, default: false },
+          USE_BILLING_DATA: { type: Boolean, default: true },
           authentication: {
             mode: { type: String, default: 'default' },
             clientId: { type: String, default: '' },
