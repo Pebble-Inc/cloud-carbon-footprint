@@ -18,11 +18,11 @@ export const mergeConfig = (ccfConfig: Partial<CCFConfig>) => {
     GCP: {
       ..._config.GCP,
       ...ccfConfig.GCP,
-      USE_BILLING_DATA: true,
     },
     AZURE: {
       ..._config.AZURE,
       ...ccfConfig.AZURE,
+      USE_BILLING_DATA: true,
     },
     ALI: {
       ..._config.ALI,

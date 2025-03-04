@@ -2,11 +2,13 @@
  * © 2023 Thoughtworks, Inc.
  */
 
-import {
-  Logger,
-} from '@cloud-carbon-footprint/common'
+import { Logger } from '@cloud-carbon-footprint/common'
 
-import { ITenantConfig, TenantConfig, validateTenantConfig } from './ITenantConfig';
+import {
+  ITenantConfig,
+  TenantConfig,
+  validateTenantConfig,
+} from './ITenantConfig'
 
 export default class TenantConfigService {
   private readonly logger: Logger
