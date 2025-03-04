@@ -22,7 +22,9 @@ export const mergeConfig = (ccfConfig: Partial<CCFConfig>) => {
     AZURE: {
       ..._config.AZURE,
       ...ccfConfig.AZURE,
-      USE_BILLING_DATA: true,
+      ...(ccfConfig.AZURE.authentication.clientId && {
+        USE_BILLING_DATA: true,
+      }),
     },
     ALI: {
       ..._config.ALI,
