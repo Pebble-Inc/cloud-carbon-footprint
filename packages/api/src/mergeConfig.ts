@@ -14,6 +14,10 @@ export const mergeConfig = (ccfConfig: Partial<CCFConfig>) => {
           targetRoleName: 'ccf-app',
         },
       },
+      ...{
+        USE_BILLING_DATA: Boolean(ccfConfig.AWS?.BILLING_ACCOUNT_ID),
+        INCLUDE_ESTIMATES: Boolean(ccfConfig.AWS?.BILLING_ACCOUNT_ID),
+      },
     },
     GCP: {
       ..._config.GCP,
@@ -22,9 +26,9 @@ export const mergeConfig = (ccfConfig: Partial<CCFConfig>) => {
     AZURE: {
       ..._config.AZURE,
       ...ccfConfig.AZURE,
-      ...(ccfConfig.AZURE?.authentication?.clientId && {
-        USE_BILLING_DATA: true,
-      }),
+      ...{
+        USE_BILLING_DATA: Boolean(ccfConfig.AZURE?.authentication?.clientId),
+      },
     },
     ALI: {
       ..._config.ALI,
