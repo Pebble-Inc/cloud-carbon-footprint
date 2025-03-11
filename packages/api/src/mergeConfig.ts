@@ -8,12 +8,16 @@ export const mergeConfig = (ccfConfig: Partial<CCFConfig>) => {
     AWS: {
       ..._config.AWS,
       ...ccfConfig.AWS,
-      authentication: {
-        mode: 'AWS',
-        options: {
-          targetRoleName: 'ccf-app',
-        },
-      },
+      ...(Boolean(ccfConfig.AWS?.authentication)
+        ? {
+            authentication: {
+              mode: 'AWS',
+              options: {
+                targetRoleName: 'ccf-app',
+              },
+            },
+          }
+        : {}),
       ...{
         USE_BILLING_DATA: Boolean(ccfConfig.AWS?.BILLING_ACCOUNT_ID),
         INCLUDE_ESTIMATES: Boolean(ccfConfig.AWS?.BILLING_ACCOUNT_ID),
