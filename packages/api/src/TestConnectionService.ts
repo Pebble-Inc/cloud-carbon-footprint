@@ -2,7 +2,8 @@
  * © 2021 Thoughtworks, Inc.
  */
 
-import { ChainableTemporaryCredentials } from 'aws-sdk'
+import { fromTemporaryCredentials } from "@aws-sdk/credential-providers";
+
 import {
   CCFConfig,
   AccountDetails,
@@ -51,24 +52,26 @@ export default class TestConnectionService {
         await attachInlinePolicy(account.id)
         this.serviceLogger.info(`Inline policy attached for account: ${account.id}`)
         await new Promise((resolve) => setTimeout(resolve, 5000));
-        const credentials = new ChainableTemporaryCredentials({
+        const credentials = fromTemporaryCredentials({
           params: {
             RoleArn: `arn:aws:iam::${account.id}:role/ccf-external-role-master-tenant`,
             RoleSessionName: `${account.id}-ccf-external-role-master-tenant`,
           },
-        })
+        });
 
         // Test credentials using get() with callback
         await new Promise((resolve, reject) => {
           credentials.get((err) => {
             if (err) {
-              reject(err)
-              return
+              console.error(`❌ Failed to assume role: ${err.message}`, err);
+              reject(err);
+              return;
             }
-            resolve(null)
-          })
-        })
-
+            console.log("✅ Successfully assumed role");
+            resolve(null);
+          });
+        });
+      
         // If we get here, it means the credentials were successfully assumed
         this.serviceLogger.info(
           `Successfully connected to AWS account: ${account.id}`,
