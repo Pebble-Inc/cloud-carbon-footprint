@@ -9,10 +9,17 @@ const awsRegion = process.env.AWS_REGION || "us-east-1";
 const ecsRoleName = process.env.ECS_ROLE_NAME;
 const tenantRoleName = process.env.TENANT_ROLE_NAME;
 
+<<<<<<< HEAD
 // if (!ecsRoleName || !tenantRoleName) {
 //     console.error("❌ Error: ECS_ROLE_NAME or TENANT_ROLE_NAME is missing in .env file");
 //     process.exit(1);
 // }
+=======
+if (!ecsRoleName || !tenantRoleName) {
+    console.error("❌ Error: ECS_ROLE_NAME or TENANT_ROLE_NAME is missing in .env file");
+    process.exit(1);
+}
+>>>>>>> 5819fc3a (Ccf role chaining automation (#46))
 
 // Initialize IAM client
 const client = new IAMClient({ region: awsRegion });
