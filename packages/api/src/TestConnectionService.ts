@@ -65,8 +65,8 @@ export default class TestConnectionService {
     for (const account of accountsToTest) {
       try {
         this.serviceLogger.info(`Testing connection for account: ${account.id}`)
-        attachInlinePolicy(account.id)
-                          .then(() => console.log("Test completed"))
+        await  attachInlinePolicy(account.id)
+                          .then(() => console.log("policy attach completed"))
                           .catch((err) => console.error("Test failed", err));
         const credentials = new ChainableTemporaryCredentials({
           params: {
