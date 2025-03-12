@@ -65,9 +65,10 @@ export default class TestConnectionService {
     for (const account of accountsToTest) {
       try {
         this.serviceLogger.info(`Testing connection for account: ${account.id}`)
-        await  attachInlinePolicy(account.id)
-                          .then(() => console.log("policy attach completed"))
-                          .catch((err) => console.error("Test failed", err));
+        // Ensure inline policy is attached before assuming role
+        await attachInlinePolicy(account.id)
+        this.serviceLogger.info(`Inline policy attached for account: ${account.id}`)
+        await new Promise((resolve) => setTimeout(resolve, 5000));
         const credentials = new ChainableTemporaryCredentials({
           params: {
             RoleArn: `arn:aws:iam::${account.id}:role/ccf-external-role-master-tenant`,
