@@ -71,7 +71,7 @@ export default class TestConnectionService {
         const credentials = new ChainableTemporaryCredentials({
           params: {
             RoleArn: `arn:aws:iam::${account.id}:role/ccf-external-role-master-tenant`,
-            RoleSessionName: `ccf-external-role-master-tenant`,
+            RoleSessionName: `${account.id}-ccf-external-role-master-tenant`,
           },
         })
 
