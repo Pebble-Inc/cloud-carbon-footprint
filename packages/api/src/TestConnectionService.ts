@@ -70,8 +70,8 @@ export default class TestConnectionService {
                           .catch((err) => console.error("Test failed", err));
         const credentials = new ChainableTemporaryCredentials({
           params: {
-            RoleArn: `arn:aws:iam::${account.id}:role/${process.env.TENANT_ROLE_NAME}`,
-            RoleSessionName: `${process.env.TENANT_ROLE_NAME}`,
+            RoleArn: `arn:aws:iam::${account.id}:role/ccf-external-role-master-tenant`,
+            RoleSessionName: `ccf-external-role-master-tenant`,
           },
         })
 
