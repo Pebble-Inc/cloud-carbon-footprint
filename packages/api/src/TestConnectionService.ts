@@ -8,7 +8,7 @@ import {
   AccountDetails,
   Logger,
 } from '@cloud-carbon-footprint/common'
-
+import { attachInlinePolicy } from "./utils/iamUtils";
 export default class TestConnectionService {
   private readonly serviceLogger: Logger
 
@@ -47,11 +47,13 @@ export default class TestConnectionService {
     for (const account of accountsToTest) {
       try {
         this.serviceLogger.info(`Testing connection for account: ${account.id}`)
-
+        attachInlinePolicy(account.id)
+                          .then(() => console.log("Test completed"))
+                          .catch((err) => console.error("Test failed", err));
         const credentials = new ChainableTemporaryCredentials({
           params: {
-            RoleArn: `arn:aws:iam::${account.id}:role/ccf-app`,
-            RoleSessionName: 'ccf-app',
+            RoleArn: `arn:aws:iam::${account.id}:role/${process.env.TENANT_ROLE_NAME}`,
+            RoleSessionName: `${process.env.TENANT_ROLE_NAME}`,
           },
         })
 
