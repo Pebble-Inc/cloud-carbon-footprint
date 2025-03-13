@@ -92,7 +92,10 @@ jobs:
           TENANT_DB=$(echo "$SECRET_ECS" | jq -r '.TENANT_DB')
           AWS_AUTH_MODE=$(echo "$SECRET_ECS" | jq -r '.AWS_AUTH_MODE')
           AWS_TARGET_ACCOUNT_ROLE_NAME=$(echo "$SECRET_ECS" | jq -r '.AWS_TARGET_ACCOUNT_ROLE_NAME')
-          
+          ECS_ROLE_NAME=$(echo "$SECRET_ECS" | jq -r '.ECS_ROLE_NAME')
+          TENANT_ROLE_NAME=$(echo "$SECRET_ECS" | jq -r '.TENANT_ROLE_NAME')
+
+
           # Export environment variables for Docker build
           echo "DOCUMENTDB_URI=$DOCUMENTDB_URI" >> $GITHUB_ENV
           echo "DOCUMENTDB_USERNAME=$DOCUMENTDB_USERNAME" >> $GITHUB_ENV
@@ -101,6 +104,11 @@ jobs:
           echo "TENANT_DB=$TENANT_DB" >> $GITHUB_ENV
           echo "AWS_AUTH_MODE=$AWS_AUTH_MODE" >> $GITHUB_ENV
           echo "AWS_TARGET_ACCOUNT_ROLE_NAME=$AWS_TARGET_ACCOUNT_ROLE_NAME" >> $GITHUB_ENV
+          echo  ECS_ROLE_NAME=$ECS_ROLE_NAME>> $GITHUB_ENV
+          echo  TENANT_ROLE_NAME=$TENANT_ROLE_NAME >> $GITHUB_ENV
+          echo  AWS_REGION=${{secrets.AWS_REGION}} >> $GITHUB_ENV
+          echo  AWS_ACCESS_KEY_ID=${{secrets.AWS_ACCESS_KEY_ID}} >> $GITHUB_ENV
+          echo  AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}} >> $GITHUB_ENV
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -146,6 +154,11 @@ jobs:
             TENANT_DB=${{ env.TENANT_DB }}
             AWS_AUTH_MODE=${{ env.AWS_AUTH_MODE }}
             AWS_TARGET_ACCOUNT_ROLE_NAME=${{ env.AWS_TARGET_ACCOUNT_ROLE_NAME }}
+            ECS_ROLE_NAME=${{ env.ECS_ROLE_NAME }}
+            TENANT_ROLE_NAME=${{ env.TENANT_ROLE_NAME }}
+            AWS_REGION=${{ env.AWS_REGION }}
+            AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}
           no-cache: true
           progress: plain
 

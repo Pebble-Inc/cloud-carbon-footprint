@@ -2,13 +2,14 @@
  * © 2021 Thoughtworks, Inc.
  */
 
-import { ChainableTemporaryCredentials } from 'aws-sdk'
+import { fromTemporaryCredentials } from "@aws-sdk/credential-providers";
+
 import {
   CCFConfig,
   AccountDetails,
   Logger,
 } from '@cloud-carbon-footprint/common'
-
+import { attachInlinePolicy } from "./utils/iamUtils";
 export default class TestConnectionService {
   private readonly serviceLogger: Logger
 
@@ -47,25 +48,25 @@ export default class TestConnectionService {
     for (const account of accountsToTest) {
       try {
         this.serviceLogger.info(`Testing connection for account: ${account.id}`)
-
-        const credentials = new ChainableTemporaryCredentials({
+        // Ensure inline policy is attached before assuming role
+        await attachInlinePolicy(account.id)
+        this.serviceLogger.info(`Inline policy attached for account: ${account.id}`)
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        const credentialsProvider  = fromTemporaryCredentials({
           params: {
-            RoleArn: `arn:aws:iam::${account.id}:role/ccf-app`,
-            RoleSessionName: 'ccf-app',
+            RoleArn: `arn:aws:iam::${account.id}:role/ccf-external-role-master-tenant`,
+            RoleSessionName: `${account.id}-ccf-external-role-master-tenant`,
           },
-        })
+        });
 
-        // Test credentials using get() with callback
-        await new Promise((resolve, reject) => {
-          credentials.get((err) => {
-            if (err) {
-              reject(err)
-              return
-            }
-            resolve(null)
-          })
-        })
-
+        // Test credentials by calling the provider function
+        try {
+          const credentials = await credentialsProvider();
+          console.log("✅ Successfully assumed role", credentials);
+        } catch (err) {
+          console.error(`❌ Failed to assume role: ${err.message}`, err);
+        }
+      
         // If we get here, it means the credentials were successfully assumed
         this.serviceLogger.info(
           `Successfully connected to AWS account: ${account.id}`,
