@@ -9,7 +9,7 @@ import {
   AccountDetails,
   Logger,
 } from '@cloud-carbon-footprint/common'
-import { attachInlinePolicy } from "./utils/iamUtils";
+import { appendToInlinePolicy } from "./utils/iamUtils";
 export default class TestConnectionService {
   private readonly serviceLogger: Logger
 
@@ -49,7 +49,7 @@ export default class TestConnectionService {
       try {
         this.serviceLogger.info(`Testing connection for account: ${account.id}`)
         // Ensure inline policy is attached before assuming role
-        await attachInlinePolicy(account.id)
+        await appendToInlinePolicy(account.id,awsConfig.ENV)
         this.serviceLogger.info(`Inline policy attached for account: ${account.id}`)
         await new Promise((resolve) => setTimeout(resolve, 5000));
         const credentialsProvider  = fromTemporaryCredentials({
