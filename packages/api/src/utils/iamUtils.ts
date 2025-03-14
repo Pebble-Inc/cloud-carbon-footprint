@@ -26,8 +26,10 @@ export async function appendToInlinePolicy(tenantAccountId: string,envVal: strin
     let role=""
     if (envVal=="dev"){
         role=ecsRoleNameDev
+        console.error(`✅  ${role} ENV found Proceeding to the test Conection! `);
     }else if (envVal=="prod"){
         role=ecsRoleNameProd
+        console.error(`✅  ${role} ENV found Proceeding to the test Conection! `);
     }else{
         console.error(`❌ Failed to update policy ENV not found`);
     }
