@@ -5,4 +5,5 @@ dist-core
 .env
 .env.production
 *.pem
+.yarn
 
