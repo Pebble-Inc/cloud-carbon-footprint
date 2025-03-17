@@ -13,7 +13,7 @@ export const mergeConfig = (ccfConfig: Partial<CCFConfig>) => {
             authentication: {
               mode: 'AWS',
               options: {
-                targetRoleName: 'ccf-app',
+                targetRoleName: 'ccf-external-role-master-tenant',
               },
             },
           }
