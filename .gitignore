@@ -281,3 +281,5 @@ packages/create-app/ccf-app
 # Nodejs version management
 .node-version
 
+.yarn
+

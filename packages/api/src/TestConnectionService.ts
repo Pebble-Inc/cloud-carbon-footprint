@@ -10,12 +10,31 @@ import {
   Logger,
 } from '@cloud-carbon-footprint/common'
 import { attachInlinePolicy } from "./utils/iamUtils";
+
+import { ClientSecretCredential } from '@azure/identity'
 export default class TestConnectionService {
   private readonly serviceLogger: Logger
 
   constructor() {
     this.serviceLogger = new Logger('TestConnectionService')
   }
+
+  async testConnection(config: CCFConfig): Promise<void> {
+    if (config.AWS) {
+      return this.testAWSConnection(config.AWS)
+    }
+
+    if (config.GCP) {
+      return this.testGCPConnection(config.GCP)
+    }
+
+    if (config.AZURE) {
+      return this.testAzureConnection(config.AZURE)
+    }
+
+    throw new Error('No valid configuration provided')
+  }
+
 
   async testAWSConnection(awsConfig: CCFConfig['AWS']): Promise<void> {
     if (!awsConfig) {
@@ -83,5 +102,56 @@ export default class TestConnectionService {
     }
 
     this.serviceLogger.info('AWS connection test completed successfully')
+  }
+
+  async testGCPConnection(gcpConfig: CCFConfig['GCP']): Promise<void> {
+    if (!gcpConfig) {
+      throw new Error('GCP configuration is required')
+    }
+  }
+
+  async testAzureConnection(azureConfig: CCFConfig['AZURE']): Promise<void> {
+    if (!azureConfig) {
+      throw new Error('Azure configuration is required')
+    }
+
+    const { authentication } = azureConfig
+
+    if (!authentication) {
+      throw new Error('Azure authentication configuration is required')
+    }
+
+    // Check required authentication parameters for default case
+    if (
+      !authentication.clientId ||
+      !authentication.clientSecret ||
+      !authentication.tenantId
+    ) {
+      throw new Error(
+        'Azure client ID, client secret, and tenant ID are required',
+      )
+    }
+
+    this.serviceLogger.info('Starting Azure connection test...')
+
+    try {
+      // Create Azure credentials using the default case
+      const credentials = new ClientSecretCredential(
+        authentication.tenantId,
+        authentication.clientId,
+        authentication.clientSecret,
+      )
+
+      // Test the credentials by attempting to get a token
+      // This will throw if credentials are invalid
+      await credentials.getToken('https://management.azure.com/.default')
+
+      this.serviceLogger.info('Successfully connected to Azure')
+    } catch (error) {
+      this.serviceLogger.error('Azure connection test failed', error)
+      throw new Error(`Failed to connect to Azure: ${error.message}`)
+    }
+
+    this.serviceLogger.info('Azure connection test completed successfully')
   }
 }
