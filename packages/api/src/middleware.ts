@@ -193,7 +193,7 @@ export const TestConnectionMiddleware = async (
 
     res.json({
       success: true,
-      message: 'Successfully connected to AWS services',
+      message: 'Successfully connected!',
     })
   } catch (error) {
     const errorMessage =
