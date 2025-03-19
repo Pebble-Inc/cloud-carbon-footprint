@@ -2,14 +2,14 @@
  * © 2021 Thoughtworks, Inc.
  */
 
-import { fromTemporaryCredentials } from "@aws-sdk/credential-providers";
+import { fromTemporaryCredentials } from '@aws-sdk/credential-providers'
 
 import {
   CCFConfig,
   AccountDetails,
   Logger,
 } from '@cloud-carbon-footprint/common'
-import { attachInlinePolicy } from "./utils/iamUtils";
+import { attachInlinePolicy } from './utils/iamUtils'
 
 import { ClientSecretCredential } from '@azure/identity'
 export default class TestConnectionService {
@@ -34,7 +34,6 @@ export default class TestConnectionService {
 
     throw new Error('No valid configuration provided')
   }
-
 
   async testAWSConnection(awsConfig: CCFConfig['AWS']): Promise<void> {
     if (!awsConfig) {
@@ -69,23 +68,25 @@ export default class TestConnectionService {
         this.serviceLogger.info(`Testing connection for account: ${account.id}`)
         // Ensure inline policy is attached before assuming role
         await attachInlinePolicy(account.id)
-        this.serviceLogger.info(`Inline policy attached for account: ${account.id}`)
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-        const credentialsProvider  = fromTemporaryCredentials({
+        this.serviceLogger.info(
+          `Inline policy attached for account: ${account.id}`,
+        )
+        await new Promise((resolve) => setTimeout(resolve, 5000))
+        const credentialsProvider = fromTemporaryCredentials({
           params: {
             RoleArn: `arn:aws:iam::${account.id}:role/ccf-external-role-master-tenant`,
             RoleSessionName: `${account.id}-ccf-external-role-master-tenant`,
           },
-        });
+        })
 
         // Test credentials by calling the provider function
         try {
-          const credentials = await credentialsProvider();
-          console.log("✅ Successfully assumed role", credentials);
+          const credentials = await credentialsProvider()
+          console.log('✅ Successfully assumed role', credentials)
         } catch (err) {
-          console.error(`❌ Failed to assume role: ${err.message}`, err);
+          console.error(`❌ Failed to assume role: ${err.message}`, err)
         }
-      
+
         // If we get here, it means the credentials were successfully assumed
         this.serviceLogger.info(
           `Successfully connected to AWS account: ${account.id}`,
