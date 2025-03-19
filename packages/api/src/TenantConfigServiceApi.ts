@@ -31,16 +31,76 @@ export default class TenantConfigService {
     }
   }
 
-  async getConfig(tenantId: string): Promise<ITenantConfig | null> {
+  async getConfigsByTenantId(tenantId: string): Promise<ITenantConfig[]> {
     try {
-      const config = await TenantConfig.findOne({ tenantId }).lean()
+      const configs = await TenantConfig.find({ tenantId }).lean()
+      if (configs.length === 0) {
+        this.logger.warn(`No configurations found for tenant: ${tenantId}`)
+      }
+      return configs
+    } catch (error) {
+      this.logger.error('Error fetching tenant configurations:', error)
+      throw error
+    }
+  }
+
+  async getConfigById(configId: string): Promise<ITenantConfig | null> {
+    try {
+      const config = await TenantConfig.findOne({ configId }).lean()
       if (!config) {
-        this.logger.warn(`No configuration found for tenant: ${tenantId}`)
+        this.logger.warn(`No configuration found for configId: ${configId}`)
         return null
       }
       return config
     } catch (error) {
-      this.logger.error('Error fetching tenant configuration:', error)
+      this.logger.error('Error fetching tenant configuration by ID:', error)
+      throw error
+    }
+  }
+
+  async updateConfigById(
+    configId: string,
+    config: Partial<ITenantConfig>,
+  ): Promise<ITenantConfig | null> {
+    try {
+      const updatedConfig = await TenantConfig.findOneAndUpdate(
+        { configId },
+        { ...config, updatedAt: new Date() },
+        { new: true, lean: true },
+      )
+
+      if (updatedConfig) {
+        this.logger.info(`Updated configuration for configId: ${configId}`)
+        return updatedConfig
+      }
+      return null
+    } catch (error) {
+      this.logger.error('Error updating tenant configuration:', error)
+      throw error
+    }
+  }
+
+  async deleteConfigById(configId: string): Promise<boolean> {
+    try {
+      const result = await TenantConfig.deleteOne({ configId })
+      const deleted = result.deletedCount > 0
+
+      if (deleted) {
+        this.logger.info(`Deleted configuration for configId: ${configId}`)
+      }
+      return deleted
+    } catch (error) {
+      this.logger.error('Error deleting tenant configuration:', error)
+      throw error
+    }
+  }
+
+  // Legacy methods - kept for backward compatibility
+  async getConfig(tenantId: string): Promise<ITenantConfig | null> {
+    try {
+      const configs = await this.getConfigsByTenantId(tenantId)
+      return configs.length > 0 ? configs[0] : null
+    } catch (error) {
       throw error
     }
   }
