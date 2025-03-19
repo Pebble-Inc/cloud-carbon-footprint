@@ -4,7 +4,7 @@
 
 import express from 'express'
 import { setConfig, CCFConfig } from '@cloud-carbon-footprint/common'
-import  TenantConfigService  from './TenantConfigServiceApi'
+import TenantConfigService from './TenantConfigServiceApi'
 import {
   FootprintApiMiddleware,
   EmissionsApiMiddleware,
@@ -13,6 +13,7 @@ import {
   TestConnectionMiddleware,
   HealthCheckMiddleware,
 } from './middleware'
+import Migration from './Migration'
 
 export const createRouter = (config?: CCFConfig) => {
   setConfig(config)
@@ -23,6 +24,52 @@ export const createRouter = (config?: CCFConfig) => {
   console.log('Debug: TenantConfigService type:', typeof TenantConfigService)
 
   const tenantConfigService = new TenantConfigService()
+  const migrationService = new Migration()
+
+  /**
+   * @openapi
+   * /api/migration:
+   *  get:
+   *     tags:
+   *     - Migration
+   *     summary: Runs data migration for configId field
+   *     description: Updates existing tenant documents to include configId field
+   *     responses:
+   *       200:
+   *         description: Migration completed successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 message:
+   *                   type: string
+   *                 count:
+   *                   type: number
+   *                   description: Number of documents updated
+   *       500:
+   *         description: Error running migration
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 error:
+   *                   type: string
+   */
+  router.get(
+    '/migration',
+    async (req: express.Request, res: express.Response): Promise<void> => {
+      try {
+        const result = await migrationService.migrateConfigId()
+        res.status(200).json(result)
+      } catch (error) {
+        res.status(500).json({ error: error.message })
+      }
+    },
+  )
 
   // POST /tenant-configs endpoint before applying tenant middleware
   /**
