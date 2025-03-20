@@ -95,41 +95,9 @@ export default class TenantConfigService {
     }
   }
 
-  // Legacy methods - kept for backward compatibility
-  async getConfig(tenantId: string): Promise<ITenantConfig | null> {
+  async deleteTenantConfigs(tenantId: string): Promise<boolean> {
     try {
-      const configs = await this.getConfigsByTenantId(tenantId)
-      return configs.length > 0 ? configs[0] : null
-    } catch (error) {
-      throw error
-    }
-  }
-
-  async updateConfig(
-    tenantId: string,
-    config: Partial<ITenantConfig>,
-  ): Promise<ITenantConfig | null> {
-    try {
-      const updatedConfig = await TenantConfig.findOneAndUpdate(
-        { tenantId },
-        { ...config, updatedAt: new Date() },
-        { new: true, lean: true },
-      )
-
-      if (updatedConfig) {
-        this.logger.info(`Updated configuration for tenant: ${tenantId}`)
-        return updatedConfig
-      }
-      return null
-    } catch (error) {
-      this.logger.error('Error updating tenant configuration:', error)
-      throw error
-    }
-  }
-
-  async deleteConfig(tenantId: string): Promise<boolean> {
-    try {
-      const result = await TenantConfig.deleteOne({ tenantId })
+      const result = await TenantConfig.deleteMany({ tenantId })
       const deleted = result.deletedCount > 0
 
       if (deleted) {

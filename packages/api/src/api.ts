@@ -9,7 +9,7 @@ import {
   FootprintApiMiddleware,
   EmissionsApiMiddleware,
   RecommendationsApiMiddleware,
-  TenantMiddleware,
+  TenantConfigMiddleware,
   TestConnectionMiddleware,
   HealthCheckMiddleware,
 } from './middleware'
@@ -584,7 +584,7 @@ export const createRouter = (config?: CCFConfig) => {
   )
 
   // Apply tenant middleware to all other endpoints
-  router.use(TenantMiddleware)
+  router.use(TenantConfigMiddleware)
 
   /**
    * @openapi
@@ -596,12 +596,12 @@ export const createRouter = (config?: CCFConfig) => {
    *     produces:
    *       - application/json
    *     parameters:
-   *      - name: x-tenant-id
+   *      - name: x-config-id
    *        in: header
    *        required: true
    *        schema:
    *          type: string
-   *        description: Tenant identifier
+   *        description: Configuration identifier
    *      - name: start
    *        in: query
    *        description: The start date for the footprint; e.g. 2022-10-18
@@ -706,12 +706,12 @@ export const createRouter = (config?: CCFConfig) => {
    *     - Emissions Factors
    *     description: Gets the carbon intensity (co2e/kWh) of all cloud provider regions
    *     parameters:
-   *      - name: x-tenant-id
+   *      - name: x-config-id
    *        in: header
    *        required: true
    *        schema:
    *          type: string
-   *        description: Tenant identifier
+   *        description: Configuration identifier
    *     responses:
    *       200:
    *         description: Success
@@ -732,12 +732,12 @@ export const createRouter = (config?: CCFConfig) => {
    *     - Recommendations
    *     description: Gets recommendations from cloud providers and their estimated carbon and energy impact
    *     parameters:
-   *      - name: x-tenant-id
+   *      - name: x-config-id
    *        in: header
    *        required: true
    *        schema:
    *          type: string
-   *        description: Tenant identifier
+   *        description: Configuration identifier
    *      - name: awsRecommendationTarget
    *        in: query
    *        description: Defines whether targeted AWS recommendations should be within the same family
