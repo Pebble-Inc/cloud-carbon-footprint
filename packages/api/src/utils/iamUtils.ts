@@ -8,10 +8,10 @@ const ecsRoleNameDev = "pebble-dev-ecs-exec-role20241211135546171100000002";
 const ecsRoleNameProd = "pebble-dev-ecs-exec-role20241211135546171100000002";
 const tenantRoleName = "ccf-external-role-master-tenant";
 
-if (!ecsRoleNameDev || !tenantRoleName || ecsRoleNameProd ) {
-    console.error("❌ Error: ECS_ROLE_NAME or TENANT_ROLE_NAME is missing in .env file");
-    process.exit(1);
-}
+// if (!ecsRoleNameDev || !tenantRoleName || ecsRoleNameProd ) {
+//     console.error("❌ Error: ECS_ROLE_NAME or TENANT_ROLE_NAME is missing in .env file");
+//     process.exit(1);
+// }
 
 // Initialize IAM client
 const client = new IAMClient({ region: awsRegion });
