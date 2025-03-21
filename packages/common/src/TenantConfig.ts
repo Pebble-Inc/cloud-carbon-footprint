@@ -9,6 +9,7 @@ import { AWS_RECOMMENDATIONS_SERVICES } from './RecommendationsService'
 // Base interface without Document properties
 export interface ITenantConfig {
   tenantId: string
+  configId: string
   createdAt: Date
   updatedAt: Date
   configDoc: {
@@ -24,7 +25,13 @@ export interface ITenantConfig {
 // Create the schema
 const tenantConfigSchema = new Schema(
   {
-    tenantId: { type: String, required: true, unique: true },
+    tenantId: { type: String, required: true, unique: false },
+    configId: {
+      type: String,
+      required: true,
+      unique: true,
+      default: () => generateConfigId(),
+    },
     configDoc: {
       AWS: {
         type: {
@@ -193,4 +200,8 @@ export const validateTenantConfig = (config: Partial<ITenantConfig>): void => {
       'Azure authentication mode is required when Azure authentication is provided',
     )
   }
+}
+
+export const generateConfigId = (): string => {
+  return new mongoose.Types.ObjectId().toString()
 }

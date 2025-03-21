@@ -189,11 +189,11 @@ export const TestConnectionMiddleware = async (
     const testConnectionService = new TestConnectionService()
 
     // Only test AWS connection for now
-    await testConnectionService.testAWSConnection(configDoc?.AWS)
+    await testConnectionService.testConnection(configDoc)
 
     res.json({
       success: true,
-      message: 'Successfully connected to AWS services',
+      message: 'Successfully connected!',
     })
   } catch (error) {
     const errorMessage =
