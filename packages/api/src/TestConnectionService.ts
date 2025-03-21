@@ -9,9 +9,10 @@ import {
   AccountDetails,
   Logger,
 } from '@cloud-carbon-footprint/common'
-import { attachInlinePolicy } from './utils/iamUtils'
 
+import { attachInlinePolicy } from './utils/iamUtils'
 import { ClientSecretCredential } from '@azure/identity'
+
 export default class TestConnectionService {
   private readonly serviceLogger: Logger
 
@@ -67,12 +68,10 @@ export default class TestConnectionService {
       try {
         this.serviceLogger.info(`Testing connection for account: ${account.id}`)
         // Ensure inline policy is attached before assuming role
-        await attachInlinePolicy(account.id)
-        this.serviceLogger.info(
-          `Inline policy attached for account: ${account.id}`,
-        )
-        await new Promise((resolve) => setTimeout(resolve, 5000))
-        const credentialsProvider = fromTemporaryCredentials({
+        await appendToInlinePolicy(account.id,awsConfig.ENV)
+        this.serviceLogger.info(`Inline policy attached for account: ${account.id}`)
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        const credentialsProvider  = fromTemporaryCredentials({
           params: {
             RoleArn: `arn:aws:iam::${account.id}:role/ccf-external-role-master-tenant`,
             RoleSessionName: `${account.id}-ccf-external-role-master-tenant`,
