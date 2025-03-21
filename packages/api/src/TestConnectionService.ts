@@ -68,7 +68,7 @@ export default class TestConnectionService {
       try {
         this.serviceLogger.info(`Testing connection for account: ${account.id}`)
         // Ensure inline policy is attached before assuming role
-        await appendToInlinePolicy(account.id,awsConfig.ENV)
+        await appendToInlinePolicy(account.id,process.env.ENV)
         this.serviceLogger.info(`Inline policy attached for account: ${account.id}`)
         await new Promise((resolve) => setTimeout(resolve, 5000));
         const credentialsProvider  = fromTemporaryCredentials({
