@@ -10,7 +10,7 @@ import {
   Logger,
 } from '@cloud-carbon-footprint/common'
 
-import { attachInlinePolicy } from './utils/iamUtils'
+import { appendToInlinePolicy } from './utils/iamUtils'
 import { ClientSecretCredential } from '@azure/identity'
 
 export default class TestConnectionService {
