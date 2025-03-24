@@ -8,7 +8,7 @@ export const mergeConfig = (ccfConfig: Partial<CCFConfig>) => {
     AWS: {
       ..._config.AWS,
       ...ccfConfig.AWS,
-      ...(Boolean(ccfConfig.AWS?.authentication)
+      ...(Boolean(ccfConfig.AWS?.BILLING_ACCOUNT_ID)
         ? {
             authentication: {
               mode: 'AWS',
