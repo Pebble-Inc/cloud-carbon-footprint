@@ -24,8 +24,8 @@ export async function appendToInlinePolicy(tenantAccountId: string,envVal: strin
     const policyName = `CCFAssumeTenantRolePolicy`;
     const targetRoleArn = `arn:aws:iam::${tenantAccountId}:role/${tenantRoleName}`;
     let role=""
-    console.info(` env value from .env ${{envVal}} `);
-    console.info(` targetrole value  ${{targetRoleArn}} `);
+    console.info(` env value from .env ${envVal} `);
+    console.info(` targetrole value  ${targetRoleArn} `);
     if (envVal=="dev"){
         role=ecsRoleNameDev
         console.error(`✅  ${role} ENV found Proceeding to the test Conection! `);
