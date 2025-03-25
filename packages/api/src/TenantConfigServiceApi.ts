@@ -31,33 +31,46 @@ export default class TenantConfigService {
     }
   }
 
-  async getConfig(tenantId: string): Promise<ITenantConfig | null> {
+  async getConfigsByTenantId(tenantId: string): Promise<ITenantConfig[]> {
     try {
-      const config = await TenantConfig.findOne({ tenantId }).lean()
-      if (!config) {
-        this.logger.warn(`No configuration found for tenant: ${tenantId}`)
-        return null
+      const configs = await TenantConfig.find({ tenantId }).lean()
+      if (configs.length === 0) {
+        this.logger.warn(`No configurations found for tenant: ${tenantId}`)
       }
-      return config
+      return configs
     } catch (error) {
-      this.logger.error('Error fetching tenant configuration:', error)
+      this.logger.error('Error fetching tenant configurations:', error)
       throw error
     }
   }
 
-  async updateConfig(
-    tenantId: string,
+  async getConfigById(configId: string): Promise<ITenantConfig | null> {
+    try {
+      const config = await TenantConfig.findOne({ configId }).lean()
+      if (!config) {
+        this.logger.warn(`No configuration found for configId: ${configId}`)
+        return null
+      }
+      return config
+    } catch (error) {
+      this.logger.error('Error fetching tenant configuration by ID:', error)
+      throw error
+    }
+  }
+
+  async updateConfigById(
+    configId: string,
     config: Partial<ITenantConfig>,
   ): Promise<ITenantConfig | null> {
     try {
       const updatedConfig = await TenantConfig.findOneAndUpdate(
-        { tenantId },
+        { configId },
         { ...config, updatedAt: new Date() },
         { new: true, lean: true },
       )
 
       if (updatedConfig) {
-        this.logger.info(`Updated configuration for tenant: ${tenantId}`)
+        this.logger.info(`Updated configuration for configId: ${configId}`)
         return updatedConfig
       }
       return null
@@ -67,9 +80,24 @@ export default class TenantConfigService {
     }
   }
 
-  async deleteConfig(tenantId: string): Promise<boolean> {
+  async deleteConfigById(configId: string): Promise<boolean> {
     try {
-      const result = await TenantConfig.deleteOne({ tenantId })
+      const result = await TenantConfig.deleteOne({ configId })
+      const deleted = result.deletedCount > 0
+
+      if (deleted) {
+        this.logger.info(`Deleted configuration for configId: ${configId}`)
+      }
+      return deleted
+    } catch (error) {
+      this.logger.error('Error deleting tenant configuration:', error)
+      throw error
+    }
+  }
+
+  async deleteTenantConfigs(tenantId: string): Promise<boolean> {
+    try {
+      const result = await TenantConfig.deleteMany({ tenantId })
       const deleted = result.deletedCount > 0
 
       if (deleted) {
