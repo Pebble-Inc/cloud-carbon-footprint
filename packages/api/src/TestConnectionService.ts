@@ -73,8 +73,8 @@ export default class TestConnectionService {
         await new Promise((resolve) => setTimeout(resolve, 5000));
         const credentialsProvider  = fromTemporaryCredentials({
           params: {
-            RoleArn: `arn:aws:iam::${account.id}:role/${process.env.CCF_ROLE}`,
-            RoleSessionName: `${account.id}-${process.env.CCF_ROLE}`,
+            RoleArn: `arn:aws:iam::${account.id}:role/ccf-external-role-master-tenant`,
+            RoleSessionName: `${account.id}-ccf-external-role-master-tenant`,
           },
         })
 
