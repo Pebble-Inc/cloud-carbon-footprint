@@ -177,7 +177,7 @@ const getConfig = (): CCFConfig => ({
     authentication: {
       mode: 'AWS',
       options: {
-        targetRoleName: process.env.CCF_ROLE,
+        targetRoleName: 'ccf-external-role-master-tenant',
         proxyAccountId: getEnvVar('AWS_PROXY_ACCOUNT_ID') || '',
         proxyRoleName: getEnvVar('AWS_PROXY_ROLE_NAME') || '',
       },

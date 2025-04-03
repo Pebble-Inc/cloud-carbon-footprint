@@ -25,7 +25,6 @@ ARG TENANT_DB
 ARG AWS_AUTH_MODE
 ARG AWS_TARGET_ACCOUNT_ROLE_NAME
 ARG ENV
-ARG CCF_ROLE
 
 # Verify build args are passed (will fail build if not set)
 RUN test -n "$TENANT_DB" || (echo "TENANT_DB build arg not set" && false)
@@ -45,7 +44,7 @@ ENV AWS_REGION=$AWS_REGION
 ENV AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
 ENV AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 ENV ENV=$ENV
-ENV CCF_ROLE=$CCF_ROLE
+
 # Copy SSL certificate to certs directory
 COPY global-bundle.pem ./certs/global-bundle.pem
 
