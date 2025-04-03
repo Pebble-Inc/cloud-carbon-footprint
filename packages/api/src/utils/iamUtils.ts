@@ -6,7 +6,8 @@ dotenv.config();
 const awsRegion = process.env.AWS_REGION || "us-east-1";
 const ecsRoleNameDev = "pebble-dev-ecs-exec-role20241211135546171100000002";
 const ecsRoleNameProd = "pebble-prod-ecs-exec-role20250120114714445800000002";
-const tenantRoleName = "ccf-external-role-master-tenant";
+const tenantRoleName = process.env.CCF_ROLE;
+
 
 // if (!ecsRoleNameDev || !tenantRoleName || ecsRoleNameProd ) {
 //     console.error("❌ Error: ECS_ROLE_NAME or TENANT_ROLE_NAME is missing in .env file");
