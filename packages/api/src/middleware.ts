@@ -30,29 +30,29 @@ import { mergeConfig } from './mergeConfig'
 const apiLogger = new Logger('api')
 
 /**
- * Middleware that loads tenant-specific configuration based on x-tenant-id header.
- * If no tenant ID is provided or no configuration is found, falls back to environment variables.
+ * Middleware that loads configuration based on x-config-id header.
+ * If no config ID is provided or no configuration is found, falls back to environment variables.
  */
-export const TenantMiddleware = async function (
+export const TenantConfigMiddleware = async function (
   req: express.Request,
   res: express.Response,
   next: express.NextFunction,
 ): Promise<void> {
-  const tenantId = req.headers['x-tenant-id'] as string
+  const configId = req.headers['x-config-id'] as string
 
-  if (!tenantId) {
+  if (!configId) {
     apiLogger.info(
-      'No tenant ID provided, using default environment configuration',
+      'No config ID provided, using default environment configuration',
     )
     return next()
   }
 
   try {
     const tenantConfigService = new TenantConfigService()
-    const config = await tenantConfigService.getConfig(tenantId)
+    const config = await tenantConfigService.getConfigById(configId)
 
     if (!config) {
-      apiLogger.warn(`No configuration found for tenant: ${tenantId}`)
+      apiLogger.warn(`No configuration found for configId: ${configId}`)
       return next()
     }
 
@@ -60,8 +60,8 @@ export const TenantMiddleware = async function (
     setConfig(newConfig)
     next()
   } catch (error) {
-    apiLogger.error('Error loading tenant configuration:', error)
-    res.status(500).json({ error: 'Error loading tenant configuration' })
+    apiLogger.error('Error loading configuration:', error)
+    res.status(500).json({ error: 'Error loading configuration' })
   }
 }
 

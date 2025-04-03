@@ -9,7 +9,7 @@ import {
   FootprintApiMiddleware,
   EmissionsApiMiddleware,
   RecommendationsApiMiddleware,
-  TenantMiddleware,
+  TenantConfigMiddleware,
   TestConnectionMiddleware,
   HealthCheckMiddleware,
 } from './middleware'
@@ -407,34 +407,36 @@ export const createRouter = (config?: CCFConfig) => {
 
   /**
    * @openapi
-   * /api/tenant-configs/{tenantId}:
+   * /api/tenant-configs/{configId}:
    *  get:
    *     tags:
    *     - Tenant Configuration
-   *     summary: Gets a tenant configuration
-   *     description: Retrieves the configuration for a specific tenant
+   *     summary: Gets a tenant configuration by configId
+   *     description: Retrieves the configuration for a specific config
    *     parameters:
-   *       - name: tenantId
+   *       - name: configId
    *         in: path
    *         required: true
    *         schema:
    *           type: string
-   *         description: ID of the tenant to retrieve configuration for
+   *         description: ID of the configuration to retrieve
    *     responses:
    *       200:
    *         description: Success
    *       404:
-   *         description: Tenant configuration not found
+   *         description: Configuration not found
    *       500:
    *         description: Internal server error
    */
   router.get(
-    '/tenant-configs/:tenantId',
+    '/tenant-configs/:configId',
     async (req: express.Request, res: express.Response): Promise<void> => {
       try {
-        const config = await tenantConfigService.getConfig(req.params.tenantId)
+        const config = await tenantConfigService.getConfigById(
+          req.params.configId,
+        )
         if (!config) {
-          res.status(404).json({ error: 'Tenant configuration not found' })
+          res.status(404).json({ error: 'Configuration not found' })
           return
         }
         res.json(config)
@@ -446,19 +448,60 @@ export const createRouter = (config?: CCFConfig) => {
 
   /**
    * @openapi
-   * /api/tenant-configs/{tenantId}:
-   *  put:
+   * /api/tenant-configs/tenant/{tenantId}:
+   *  get:
    *     tags:
    *     - Tenant Configuration
-   *     summary: Updates a tenant configuration
-   *     description: Updates the configuration for a specific tenant
+   *     summary: Gets all tenant configurations for a specific tenantId
+   *     description: Retrieves all configurations associated with a specific tenant
    *     parameters:
    *       - name: tenantId
    *         in: path
    *         required: true
    *         schema:
    *           type: string
-   *         description: ID of the tenant to update configuration for
+   *         description: ID of the tenant to retrieve configurations for
+   *     responses:
+   *       200:
+   *         description: Success
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *       500:
+   *         description: Internal server error
+   */
+  router.get(
+    '/tenant-configs/tenant/:tenantId',
+    async (req: express.Request, res: express.Response): Promise<void> => {
+      try {
+        const configs = await tenantConfigService.getConfigsByTenantId(
+          req.params.tenantId,
+        )
+        res.json(configs)
+      } catch (error) {
+        res.status(500).json({ error: error.message })
+      }
+    },
+  )
+
+  /**
+   * @openapi
+   * /api/tenant-configs/{configId}:
+   *  put:
+   *     tags:
+   *     - Tenant Configuration
+   *     summary: Updates a tenant configuration
+   *     description: Updates the configuration for a specific config
+   *     parameters:
+   *       - name: configId
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: ID of the configuration to update
    *     requestBody:
    *       required: true
    *       content:
@@ -476,20 +519,20 @@ export const createRouter = (config?: CCFConfig) => {
    *       200:
    *         description: Configuration updated successfully
    *       404:
-   *         description: Tenant configuration not found
+   *         description: Configuration not found
    *       500:
    *         description: Internal server error
    */
   router.put(
-    '/tenant-configs/:tenantId',
+    '/tenant-configs/:configId',
     async (req: express.Request, res: express.Response): Promise<void> => {
       try {
-        const config = await tenantConfigService.updateConfig(
-          req.params.tenantId,
+        const config = await tenantConfigService.updateConfigById(
+          req.params.configId,
           req.body,
         )
         if (!config) {
-          res.status(404).json({ error: 'Tenant configuration not found' })
+          res.status(404).json({ error: 'Configuration not found' })
           return
         }
         res.json(config)
@@ -501,36 +544,36 @@ export const createRouter = (config?: CCFConfig) => {
 
   /**
    * @openapi
-   * /api/tenant-configs/{tenantId}:
+   * /api/tenant-configs/{configId}:
    *  delete:
    *     tags:
    *     - Tenant Configuration
    *     summary: Deletes a tenant configuration
-   *     description: Deletes the configuration for a specific tenant
+   *     description: Deletes the configuration for a specific config
    *     parameters:
-   *       - name: tenantId
+   *       - name: configId
    *         in: path
    *         required: true
    *         schema:
    *           type: string
-   *         description: ID of the tenant to delete configuration for
+   *         description: ID of the configuration to delete
    *     responses:
    *       204:
    *         description: Configuration deleted successfully
    *       404:
-   *         description: Tenant configuration not found
+   *         description: Configuration not found
    *       500:
    *         description: Internal server error
    */
   router.delete(
-    '/tenant-configs/:tenantId',
+    '/tenant-configs/:configId',
     async (req: express.Request, res: express.Response): Promise<void> => {
       try {
-        const deleted = await tenantConfigService.deleteConfig(
-          req.params.tenantId,
+        const deleted = await tenantConfigService.deleteConfigById(
+          req.params.configId,
         )
         if (!deleted) {
-          res.status(404).json({ error: 'Tenant configuration not found' })
+          res.status(404).json({ error: 'Configuration not found' })
           return
         }
         res.status(204).send()
@@ -541,7 +584,7 @@ export const createRouter = (config?: CCFConfig) => {
   )
 
   // Apply tenant middleware to all other endpoints
-  router.use(TenantMiddleware)
+  router.use(TenantConfigMiddleware)
 
   /**
    * @openapi
@@ -553,12 +596,12 @@ export const createRouter = (config?: CCFConfig) => {
    *     produces:
    *       - application/json
    *     parameters:
-   *      - name: x-tenant-id
+   *      - name: x-config-id
    *        in: header
    *        required: true
    *        schema:
    *          type: string
-   *        description: Tenant identifier
+   *        description: Configuration identifier
    *      - name: start
    *        in: query
    *        description: The start date for the footprint; e.g. 2022-10-18
@@ -663,12 +706,12 @@ export const createRouter = (config?: CCFConfig) => {
    *     - Emissions Factors
    *     description: Gets the carbon intensity (co2e/kWh) of all cloud provider regions
    *     parameters:
-   *      - name: x-tenant-id
+   *      - name: x-config-id
    *        in: header
    *        required: true
    *        schema:
    *          type: string
-   *        description: Tenant identifier
+   *        description: Configuration identifier
    *     responses:
    *       200:
    *         description: Success
@@ -689,12 +732,12 @@ export const createRouter = (config?: CCFConfig) => {
    *     - Recommendations
    *     description: Gets recommendations from cloud providers and their estimated carbon and energy impact
    *     parameters:
-   *      - name: x-tenant-id
+   *      - name: x-config-id
    *        in: header
    *        required: true
    *        schema:
    *          type: string
-   *        description: Tenant identifier
+   *        description: Configuration identifier
    *      - name: awsRecommendationTarget
    *        in: query
    *        description: Defines whether targeted AWS recommendations should be within the same family
