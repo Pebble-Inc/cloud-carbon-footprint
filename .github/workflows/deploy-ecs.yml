@@ -108,6 +108,10 @@ jobs:
             echo "Unsupported branch: $BRANCH_NAME" >&2
             exit 1
           fi
+
+          # Print the value of CCF_ROLE
+          echo "The value of CCF_ROLE is: $CCF_ROLE"
+
           # Export environment variables for Docker build
           echo "ENV_VALUE=$ENV_VALUE" >> $GITHUB_ENV
           echo "DOCUMENTDB_URI=$DOCUMENTDB_URI" >> $GITHUB_ENV
