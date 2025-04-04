@@ -239,3 +239,93 @@ export const HealthCheckMiddleware = async (
     })
   }
 }
+
+/**
+ * V2 version of the Footprint API middleware that handles the fetching and calculations of cloud footprint estimates.
+ * This version bypasses the tenant middleware and uses direct configuration.
+ *
+ * @async
+ * @param {express.Request} req - The Express request object containing the request parameters.
+ * @returns A response object with the calculated raw footprint estimates.
+ */
+export const FootprintV2ApiMiddleware = async function (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> {
+  // Set the request time out to 10 minutes to allow the request enough time to complete.
+  req.socket.setTimeout(1000 * 60 * 10)
+  const rawRequest: FootprintEstimatesRawRequest = {
+    startDate: req.query.start?.toString(),
+    endDate: req.query.end?.toString(),
+    ignoreCache: req.query.ignoreCache?.toString(),
+    groupBy: req.query.groupBy?.toString(),
+    limit: req.query.limit?.toString(),
+    skip: req.query.skip?.toString(),
+    cloudProviders: req.query.cloudProviders as string[],
+    accounts: req.query.accounts as string[],
+    services: req.query.services as string[],
+    regions: req.query.regions as string[],
+    tags: req.query.tags as Tags,
+  }
+
+  if (!rawRequest.groupBy) {
+    apiLogger.warn('GroupBy parameter not specified, adopting default "day"')
+    rawRequest.groupBy = 'day'
+  }
+
+  if (!rawRequest.accounts) {
+    apiLogger.warn('Accounts parameter not specified')
+    res.status(400).json({ error: 'Accounts parameter not specified' })
+    return
+  }
+
+  const { accounts, ...rest } = rawRequest
+  const estimationResults = []
+  const tenantConfigService = new TenantConfigService()
+
+  for (const account of accounts) {
+    try {
+      const config = await tenantConfigService.getConfigById(account)
+      if (!config) {
+        apiLogger.error(`Configuration not found for account: ${account}`, null)
+        res
+          .status(400)
+          .json({ error: `Configuration not found for account: ${account}` })
+        return
+      }
+
+      const footprintApp = new App()
+      const newConfig = mergeConfig(config.configDoc)
+      setConfig(newConfig)
+      const estimationRequest = createValidFootprintRequest({
+        ...rest,
+        accounts: [],
+      })
+      const results = await footprintApp.getCostAndEstimates(estimationRequest)
+      estimationResults.push(...results)
+    } catch (e) {
+      apiLogger.error(`Error processing account ${account}:`, e)
+      if (
+        e.constructor.name ===
+        EstimationRequestValidationError.prototype.constructor.name
+      ) {
+        res.status(400).json({
+          error: `Invalid request for account ${account}: ${e.message}`,
+        })
+      } else if (
+        e.constructor.name === PartialDataError.prototype.constructor.name
+      ) {
+        res.status(416).json({
+          error: `Partial data error for account ${account}: ${e.message}`,
+        })
+      } else {
+        res.status(500).json({
+          error: `Internal server error processing account ${account}`,
+        })
+      }
+      return
+    }
+  }
+
+  res.status(200).json(estimationResults)
+}
