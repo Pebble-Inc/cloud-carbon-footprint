@@ -12,7 +12,8 @@ import {
 
 import { appendToInlinePolicy } from './utils/iamUtils'
 import { ClientSecretCredential } from '@azure/identity'
-
+import dotenv from "dotenv";
+dotenv.config();
 export default class TestConnectionService {
   private readonly serviceLogger: Logger
 
@@ -68,16 +69,17 @@ export default class TestConnectionService {
       try {
         this.serviceLogger.info(`Testing connection for account: ${account.id}`)
         // Ensure inline policy is attached before assuming role
-        await appendToInlinePolicy(account.id,process.env.ENV)
+        this.serviceLogger.info(`aws-account---${account.id},from env   >> ccf-role-----${process.env.CCF_ROLE}, ENV----${process.env.ENV}`);
+        await appendToInlinePolicy(account.id,process.env.ENV,process.env.CCF_ROLE)
         this.serviceLogger.info(`Inline policy attached for account: ${account.id}`)
         await new Promise((resolve) => setTimeout(resolve, 5000));
         const credentialsProvider  = fromTemporaryCredentials({
+          clientConfig: { region: 'us-east-1' },
           params: {
             RoleArn: `arn:aws:iam::${account.id}:role/${process.env.CCF_ROLE}`,
             RoleSessionName: `${account.id}-${process.env.CCF_ROLE}`,
           },
-        })
-
+        })        
         // Test credentials by calling the provider function
         try {
           const credentials = await credentialsProvider()
