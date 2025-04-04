@@ -113,6 +113,7 @@ jobs:
           echo "The value of CCF_ROLE is: $CCF_ROLE"
 
           # Export environment variables for Docker build
+          echo "CCF_ROLE=$CCF_ROLE" >> GITHUB_ENV
           echo "ENV_VALUE=$ENV_VALUE" >> $GITHUB_ENV
           echo "DOCUMENTDB_URI=$DOCUMENTDB_URI" >> $GITHUB_ENV
           echo "DOCUMENTDB_USERNAME=$DOCUMENTDB_USERNAME" >> $GITHUB_ENV
@@ -126,7 +127,6 @@ jobs:
           echo  AWS_REGION=${{secrets.AWS_REGION}} >> $GITHUB_ENV
           echo  AWS_ACCESS_KEY_ID=${{secrets.AWS_ACCESS_KEY_ID}} >> $GITHUB_ENV
           echo  AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}} >> $GITHUB_ENV
-          echo CCF_ROLE=$CCF_ROLE>> GITHUB_ENV
 
       - name: Login to Amazon ECR
         id: login-ecr
