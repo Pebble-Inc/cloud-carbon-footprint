@@ -74,14 +74,12 @@ export default class TestConnectionService {
         this.serviceLogger.info(`Inline policy attached for account: ${account.id}`)
         await new Promise((resolve) => setTimeout(resolve, 5000));
         const credentialsProvider  = fromTemporaryCredentials({
-          clientConfig: { region: process.env.AWS_REGION || 'us-east-1' },
+          clientConfig: { region: 'us-east-1' },
           params: {
             RoleArn: `arn:aws:iam::${account.id}:role/${process.env.CCF_ROLE}`,
             RoleSessionName: `${account.id}-${process.env.CCF_ROLE}`,
           },
-        })
-        this.serviceLogger.info(`temp creds details for testing ${credentialsProvider}`);
-        
+        })        
         // Test credentials by calling the provider function
         try {
           const credentials = await credentialsProvider()
