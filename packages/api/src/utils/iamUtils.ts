@@ -2,17 +2,10 @@ import { IAMClient, GetRolePolicyCommand, PutRolePolicyCommand } from "@aws-sdk/
 import dotenv from "dotenv";
 
 dotenv.config();
-
 const awsRegion = process.env.AWS_REGION || "us-east-1";
 const ecsRoleNameDev = "pebble-dev-ecs-exec-role20241211135546171100000002";
 const ecsRoleNameProd = "pebble-prod-ecs-exec-role20250120114714445800000002";
-const tenantRoleName = process.env.CCF_ROLE;
 
-
-// if (!ecsRoleNameDev || !tenantRoleName || ecsRoleNameProd ) {
-//     console.error("❌ Error: ECS_ROLE_NAME or TENANT_ROLE_NAME is missing in .env file");
-//     process.exit(1);
-// }
 
 // Initialize IAM client
 const client = new IAMClient({ region: awsRegion });
@@ -21,9 +14,9 @@ const client = new IAMClient({ region: awsRegion });
  * Appends a new tenant role ARN to an existing inline policy.
  * @param tenantAccountId - The AWS Account ID of the tenant
  */
-export async function appendToInlinePolicy(tenantAccountId: string,envVal: string): Promise<void> {
+export async function appendToInlinePolicy(tenantAccountId: string,envVal: string,ccfTenentRole:string): Promise<void> {
     const policyName = `CCFAssumeTenantRolePolicy`;
-    const targetRoleArn = `arn:aws:iam::${tenantAccountId}:role/${tenantRoleName}`;
+    const targetRoleArn = `arn:aws:iam::${tenantAccountId}:role/${ccfTenentRole}`;
     let role=""
     console.info(` env value from .env ${envVal} `);
     console.info(` targetrole value  ${targetRoleArn} `);
