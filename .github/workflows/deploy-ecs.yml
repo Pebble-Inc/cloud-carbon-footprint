@@ -78,13 +78,14 @@ jobs:
             --secret-id documentDB-dev-ecs \
             --query "SecretString" \
             --output text || echo "")
-
           if [[ -z "$SECRET_ECS" ]]; then
             echo "❌ ERROR: Key-Value Secrets could not be retrieved."
             exit 1
           fi
-
-          # Extract values from JSON
+      
+          echo "Retrieved secret JSON: $SECRET_ECS"
+      
+          # Extract values from the JSON secret
           DOCUMENTDB_URI=$(echo "$SECRET_ECS" | jq -r '.DOCUMENTDB_URI')
           DOCUMENTDB_USERNAME=$(echo "$SECRET_ECS" | jq -r '.DOCUMENTDB_USERNAME')
           DOCUMENTDB_PASSWORD=$(echo "$SECRET_ECS" | jq -r '.DOCUMENTDB_PASSWORD')
@@ -97,7 +98,9 @@ jobs:
           
           # Extract branch name by stripping the "refs/heads/" prefix
           BRANCH_NAME=$(echo "$GITHUB_REF" | sed 's|refs/heads/||')
+          echo "Branch: $BRANCH_NAME"
           
+          # Use wildcard matching for release branches
           if [ "$BRANCH_NAME" = "develop" ]; then
             ENV_VALUE=$(echo "$SECRET_ECS" | jq -r '.DEV_ENV')
             CCF_ROLE=$(echo "$SECRET_ECS" | jq -r '.DEV_CCF_ROLE')
@@ -108,12 +111,11 @@ jobs:
             echo "Unsupported branch: $BRANCH_NAME" >&2
             exit 1
           fi
-
-          # Print the value of CCF_ROLE
+      
           echo "The value of CCF_ROLE is: $CCF_ROLE"
-
+      
           # Export environment variables for Docker build
-          echo "CCF_ROLE=$CCF_ROLE" >> GITHUB_ENV
+          echo "CCF_ROLE=$CCF_ROLE" >> $GITHUB_ENV
           echo "ENV_VALUE=$ENV_VALUE" >> $GITHUB_ENV
           echo "DOCUMENTDB_URI=$DOCUMENTDB_URI" >> $GITHUB_ENV
           echo "DOCUMENTDB_USERNAME=$DOCUMENTDB_USERNAME" >> $GITHUB_ENV
