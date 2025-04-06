@@ -1,0 +1,89 @@
+import { EstimationResult } from '@cloud-carbon-footprint/common'
+import { FootprintEstimatesRawRequest } from '@cloud-carbon-footprint/app'
+import { Logger } from '@cloud-carbon-footprint/common'
+import { createValidFootprintRequest } from '@cloud-carbon-footprint/app'
+import { App } from '@cloud-carbon-footprint/app'
+import { mergeConfig, setConfig } from '@cloud-carbon-footprint/common'
+import TenantConfigService from './TenantConfigServiceApi'
+import {
+  EstimationRequestValidationError,
+  PartialDataError,
+} from '@cloud-carbon-footprint/common'
+
+export class FalconFootprint {
+  private logger: Logger
+  private tenantConfigService: TenantConfigService
+
+  constructor() {
+    this.logger = new Logger('FalconFootprint')
+    this.tenantConfigService = new TenantConfigService()
+  }
+
+  public async processFootprintRequest(
+    rawRequest: FootprintEstimatesRawRequest,
+  ): Promise<EstimationResult[]> {
+    if (!rawRequest.accounts) {
+      throw new Error('Accounts parameter not specified')
+    }
+
+    const { accounts, ...rest } = rawRequest
+    const estimationResults: EstimationResult[] = []
+
+    for (const account of accounts) {
+      try {
+        const config = await this.tenantConfigService.getConfigById(account)
+        if (!config) {
+          throw new Error(`Configuration not found for account: ${account}`)
+        }
+
+        const footprintApp = new App()
+        const newConfig = mergeConfig(config.configDoc)
+        setConfig(newConfig)
+        const estimationRequest = createValidFootprintRequest({
+          ...rest,
+          accounts: [],
+        })
+        const results = await footprintApp.getCostAndEstimates(
+          estimationRequest,
+        )
+
+        // Apply filters before adding to results
+        const filteredResults = this.applyFilters(results, rawRequest)
+        estimationResults.push(...filteredResults)
+      } catch (e) {
+        this.logger.error(`Error processing account ${account}:`, e)
+        if (e instanceof EstimationRequestValidationError) {
+          throw new Error(
+            `Invalid request for account ${account}: ${e.message}`,
+          )
+        } else if (e instanceof PartialDataError) {
+          throw new Error(
+            `Partial data error for account ${account}: ${e.message}`,
+          )
+        } else {
+          throw new Error(`Internal server error processing account ${account}`)
+        }
+      }
+    }
+
+    return estimationResults
+  }
+
+  private applyFilters(
+    results: EstimationResult[],
+    request: FootprintEstimatesRawRequest,
+  ): EstimationResult[] {
+    const { services } = request
+
+    return results.map((result) => ({
+      ...result,
+      serviceEstimates: result.serviceEstimates.filter((estimate) => {
+        // Apply service filter if specified
+        if (services && services.length > 0) {
+          return services.includes(estimate.serviceName)
+        }
+        return true
+      }),
+    }))
+  }
+}

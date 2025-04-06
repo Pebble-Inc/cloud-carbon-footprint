@@ -26,6 +26,7 @@ import {
 } from '@cloud-carbon-footprint/common'
 
 import { mergeConfig } from './mergeConfig'
+import { FalconFootprint } from './FalconFootprint'
 
 const apiLogger = new Logger('api')
 
@@ -273,59 +274,23 @@ export const FootprintV2ApiMiddleware = async function (
     rawRequest.groupBy = 'day'
   }
 
-  if (!rawRequest.accounts) {
-    apiLogger.warn('Accounts parameter not specified')
-    res.status(400).json({ error: 'Accounts parameter not specified' })
-    return
-  }
-
-  const { accounts, ...rest } = rawRequest
-  const estimationResults = []
-  const tenantConfigService = new TenantConfigService()
-
-  for (const account of accounts) {
-    try {
-      const config = await tenantConfigService.getConfigById(account)
-      if (!config) {
-        apiLogger.error(`Configuration not found for account: ${account}`, null)
-        res
-          .status(400)
-          .json({ error: `Configuration not found for account: ${account}` })
-        return
-      }
-
-      const footprintApp = new App()
-      const newConfig = mergeConfig(config.configDoc)
-      setConfig(newConfig)
-      const estimationRequest = createValidFootprintRequest({
-        ...rest,
-        accounts: [],
-      })
-      const results = await footprintApp.getCostAndEstimates(estimationRequest)
-      estimationResults.push(...results)
-    } catch (e) {
-      apiLogger.error(`Error processing account ${account}:`, e)
-      if (
-        e.constructor.name ===
-        EstimationRequestValidationError.prototype.constructor.name
-      ) {
-        res.status(400).json({
-          error: `Invalid request for account ${account}: ${e.message}`,
-        })
-      } else if (
-        e.constructor.name === PartialDataError.prototype.constructor.name
-      ) {
-        res.status(416).json({
-          error: `Partial data error for account ${account}: ${e.message}`,
-        })
-      } else {
-        res.status(500).json({
-          error: `Internal server error processing account ${account}`,
-        })
-      }
-      return
+  const falconFootprint = new FalconFootprint()
+  try {
+    const estimationResults = await falconFootprint.processFootprintRequest(
+      rawRequest,
+    )
+    res.status(200).json(estimationResults)
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred'
+    if (errorMessage.includes('Accounts parameter not specified')) {
+      res.status(400).json({ error: errorMessage })
+    } else if (errorMessage.includes('Invalid request')) {
+      res.status(400).json({ error: errorMessage })
+    } else if (errorMessage.includes('Partial data error')) {
+      res.status(416).json({ error: errorMessage })
+    } else {
+      res.status(500).json({ error: errorMessage })
     }
   }
-
-  res.status(200).json(estimationResults)
 }
