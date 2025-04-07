@@ -4,7 +4,7 @@ interface InsertResult {
   id: number;
 }
 
-export async function addTenant(
+export async function AddTenant(
   awsAccountId: string,
   region: string,
   env: string
