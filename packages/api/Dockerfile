@@ -31,7 +31,7 @@ ARG DB_PORT
 ARG DB_USER
 ARG DB_PASS
 ARG DB_NAME
-
+ARG DB_SSL
 
 # Verify build args are passed (will fail build if not set)
 RUN test -n "$TENANT_DB" || (echo "TENANT_DB build arg not set" && false)
@@ -57,6 +57,7 @@ ENV DB_PORT=$DB_PORT
 ENV DB_USER=$DB_USER
 ENV DB_PASS=$DB_PASS
 ENV DB_NAME=$DB_NAME
+ENV DB_SSL=$DB_SSL
 # Copy SSL certificate to certs directory
 COPY global-bundle.pem ./certs/global-bundle.pem
 

@@ -9,12 +9,16 @@ export default class TenantDBService {
   private readonly serviceLogger: Logger
 
   constructor() {
+    if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASS || !process.env.DB_NAME) {
+      throw new Error('Database configuration is missing environment variables');
+    }
     this.pool = new Pool({
       host: process.env.DB_HOST,
       port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 5432,
       user: process.env.DB_USER,
       password: process.env.DB_PASS,
       database: process.env.DB_NAME,
+      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
     })
     this.serviceLogger = new Logger('TenantDBService')
   }
@@ -40,9 +44,13 @@ export default class TenantDBService {
       const tenantId = result.rows[0].id
       this.serviceLogger.info(`Tenant added successfully with id: ${tenantId}`)
       return tenantId
-    } catch (error) {
+    } catch (error: any) {
       this.serviceLogger.error('Error inserting tenant data:', error)
       throw error
     }
+  }
+  async closePool(): Promise<void> {
+    await this.pool.end();
+    this.serviceLogger.info('Database connection pool closed.');
   }
 }

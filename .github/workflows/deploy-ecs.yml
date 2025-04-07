@@ -100,6 +100,7 @@ jobs:
           DB_USER=$(echo "$SECRET_ECS" | jq -r '.DB_USER')
           DB_PASS=$(echo "$SECRET_ECS" | jq -r '.DB_PASS')
           DB_NAME=$(echo "$SECRET_ECS" | jq -r '.DB_NAME')
+          DB_SSL=$(echo "$SECRET_ECS" | jq -r '.DB_SSL')
           # Extract branch name by stripping the "refs/heads/" prefix
           BRANCH_NAME=$(echo "$GITHUB_REF" | sed 's|refs/heads/||')
           echo "Branch: $BRANCH_NAME"
@@ -138,7 +139,8 @@ jobs:
           echo DB_USER=$DB_USER >> $GITHUB_ENV
           echo DB_PASS=$DB_PASS >> $GITHUB_ENV
           echo DB_NAME=$DB_NAME >> $GITHUB_ENV
-
+          echo DB_SSL=$DB_SSL   >> $GITHUB_ENV
+          
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
@@ -194,6 +196,7 @@ jobs:
             DB_USER=${{ env.DB_USER }}
             DB_PASS=${{ env.DB_PASS }}
             DB_NAME=${{ env.DB_NAME }}
+            DB_SSL=${{ env.DB_SSL }}
             
           no-cache: true
           progress: plain
