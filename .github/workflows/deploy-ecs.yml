@@ -95,7 +95,11 @@ jobs:
           AWS_TARGET_ACCOUNT_ROLE_NAME=$(echo "$SECRET_ECS" | jq -r '.AWS_TARGET_ACCOUNT_ROLE_NAME')
           ECS_ROLE_NAME=$(echo "$SECRET_ECS" | jq -r '.ECS_ROLE_NAME')
           TENANT_ROLE_NAME=$(echo "$SECRET_ECS" | jq -r '.TENANT_ROLE_NAME')
-          
+          DB_HOST=$(echo "$SECRET_ECS" | jq -r '.DB_HOST')
+          DB_PORT=$(echo "$SECRET_ECS" | jq -r '.DB_PORT')
+          DB_USER=$(echo "$SECRET_ECS" | jq -r '.DB_USER')
+          DB_PASS=$(echo "$SECRET_ECS" | jq -r '.DB_PASS')
+          DB_NAME=$(echo "$SECRET_ECS" | jq -r '.DB_NAME')
           # Extract branch name by stripping the "refs/heads/" prefix
           BRANCH_NAME=$(echo "$GITHUB_REF" | sed 's|refs/heads/||')
           echo "Branch: $BRANCH_NAME"
@@ -129,6 +133,11 @@ jobs:
           echo  AWS_REGION=${{secrets.AWS_REGION}} >> $GITHUB_ENV
           echo  AWS_ACCESS_KEY_ID=${{secrets.AWS_ACCESS_KEY_ID}} >> $GITHUB_ENV
           echo  AWS_SECRET_ACCESS_KEY=${{secrets.AWS_SECRET_ACCESS_KEY}} >> $GITHUB_ENV
+          echo DB_HOST=$DB_HOST >> $GITHUB_ENV
+          echo DB_PORT=$DB_PORT >> $GITHUB_ENV
+          echo DB_USER=$DB_USER >> $GITHUB_ENV
+          echo DB_PASS=$DB_PASS >> $GITHUB_ENV
+          echo DB_NAME=$DB_NAME >> $GITHUB_ENV
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -180,6 +189,12 @@ jobs:
             AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}
             ENV=${{ env.ENV_VALUE }}
             CCF_ROLE=${{ env.CCF_ROLE }}
+            DB_HOST=${{ env.DB_HOST }}
+            DB_PORT=${{ env.DB_PORT }}
+            DB_USER=${{ env.DB_USER }}
+            DB_PASS=${{ env.DB_PASS }}
+            DB_NAME=${{ env.DB_NAME }}
+            
           no-cache: true
           progress: plain
 

@@ -4,6 +4,7 @@
 
 import express from 'express'
 import { setConfig, CCFConfig } from '@cloud-carbon-footprint/common'
+import TenantDBService from './db/TenantDBService' 
 import TenantConfigService from './TenantConfigServiceApi'
 import {
   FootprintApiMiddleware,
@@ -15,7 +16,6 @@ import {
   RecommendationsV2ApiMiddleware,
 } from './middleware'
 import Migration from './Migration'
-
 export const createRouter = (config?: CCFConfig) => {
   setConfig(config)
   const router = express.Router()
@@ -26,6 +26,7 @@ export const createRouter = (config?: CCFConfig) => {
 
   const tenantConfigService = new TenantConfigService()
   const migrationService = new Migration()
+  const tenantDBService = new TenantDBService()
 
   /**
    * @openapi
@@ -318,13 +319,22 @@ export const createRouter = (config?: CCFConfig) => {
     '/tenant-configs',
     async (req: express.Request, res: express.Response): Promise<void> => {
       try {
-        const config = await tenantConfigService.createConfig(req.body)
-        res.status(201).json(config)
+        const config = await tenantConfigService.createConfig(req.body);
+        const awsAccounts = req.body.configDoc?.AWS?.accounts;
+        if (awsAccounts && awsAccounts.length > 0) {
+          const { id: aws_account_id, region } = awsAccounts[0];
+          await tenantDBService.addTenant(
+            aws_account_id,
+            region,
+            process.env.ENV
+          )
+        }  
+        res.status(201).json(config);
       } catch (error) {
-        res.status(400).json({ error: error.message })
+        res.status(400).json({ error: error.message });
       }
     },
-  )
+  );  
 
   /**
    * @openapi
