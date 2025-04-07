@@ -4,6 +4,7 @@
 
 import express from 'express'
 import { setConfig, CCFConfig } from '@cloud-carbon-footprint/common'
+import TenantDBService from './db/TenantDBService' 
 import TenantConfigService from './TenantConfigServiceApi'
 import {
   FootprintApiMiddleware,
@@ -14,7 +15,6 @@ import {
   HealthCheckMiddleware,
 } from './middleware'
 import Migration from './Migration'
-import {AddTenant} from './db/functions'
 export const createRouter = (config?: CCFConfig) => {
   setConfig(config)
   const router = express.Router()
@@ -25,6 +25,7 @@ export const createRouter = (config?: CCFConfig) => {
 
   const tenantConfigService = new TenantConfigService()
   const migrationService = new Migration()
+  const tenantDBService = new TenantDBService()
 
   /**
    * @openapi
@@ -321,7 +322,11 @@ export const createRouter = (config?: CCFConfig) => {
         const awsAccounts = req.body.configDoc?.AWS?.accounts;
         if (awsAccounts && awsAccounts.length > 0) {
           const { id: aws_account_id, region } = awsAccounts[0];
-          await AddTenant(aws_account_id, region, process.env.ENV);
+          await tenantDBService.addTenant(
+            aws_account_id,
+            region,
+            process.env.ENV
+          )
         }  
         res.status(201).json(config);
       } catch (error) {
