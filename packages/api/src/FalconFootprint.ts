@@ -11,13 +11,13 @@ import {
 import { Logger } from '@cloud-carbon-footprint/common'
 import { createValidFootprintRequest } from '@cloud-carbon-footprint/app'
 import { App } from '@cloud-carbon-footprint/app'
-import { mergeConfig, setConfig } from '@cloud-carbon-footprint/common'
+import { setConfig } from '@cloud-carbon-footprint/common'
 import TenantConfigService from './TenantConfigServiceApi'
 import {
   EstimationRequestValidationError,
   PartialDataError,
 } from '@cloud-carbon-footprint/common'
-
+import { mergeConfig } from './mergeConfig'
 export interface FootprintV2EstimatesRawRequest {
   startDate?: string
   endDate?: string
