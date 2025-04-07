@@ -34,7 +34,7 @@ export default class TenantDBService {
 
     try {
       const query = `
-        INSERT INTO my_table (aws_account_id, region, env)
+        INSERT INTO ccf_cost_usage (aws_account_id, region, env)
         VALUES ($1, $2, $3)
         RETURNING id;
       `
