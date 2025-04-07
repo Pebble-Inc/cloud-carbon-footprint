@@ -45,6 +45,27 @@ export interface RecommendationsV2RawRequest {
 export class FalconFootprint {
   private logger: Logger
   private tenantConfigService: TenantConfigService
+  private readonly serviceNameMappings: Record<string, Record<string, string>> =
+    {
+      AWS: {
+        s3: 'AmazonS3',
+        ec2: 'AmazonEC2',
+        lambda: 'AWSLambda',
+        rds: 'AmazonRDS',
+        elasticache: 'AmazonElastiCache',
+        ebs: 'AmazonEBS',
+      },
+      GCP: {
+        computeEngine: 'ComputeEngine',
+      },
+      AZURE: {
+        virtualmachine: 'VirtualMachine',
+      },
+      ALI: {
+        compute: 'AliCompute',
+      },
+      // Add mappings for other cloud providers as needed
+    }
 
   constructor() {
     this.logger = new Logger('FalconFootprint')
@@ -128,11 +149,32 @@ export class FalconFootprint {
     return results.map((result) => ({
       ...result,
       serviceEstimates: result.serviceEstimates.filter((estimate) => {
-        // Apply service filter if specified
-        if (services && services.length > 0) {
-          return services.includes(estimate.serviceName)
+        // Skip filtering if no services specified
+        if (!services || services.length === 0) {
+          return true
         }
-        return true
+
+        // Get the cloud provider for this estimate
+        const cloudProvider = estimate.cloudProvider
+
+        // If no mapping exists for this cloud provider, keep all estimates
+        if (!this.serviceNameMappings[cloudProvider]) {
+          return true
+        }
+
+        // Get the mapping for this cloud provider
+        const providerMappings = this.serviceNameMappings[cloudProvider]
+
+        // Check if any of the requested service keys map to this service name
+        // If a requested service has no mapping, keep those estimates
+        return services.some((requestedKey) => {
+          const mappedName = providerMappings[requestedKey.toLowerCase()]
+          // If no mapping exists for this service key, keep the estimate
+          if (!mappedName) {
+            return true
+          }
+          return mappedName === estimate.serviceName
+        })
       }),
     }))
   }
