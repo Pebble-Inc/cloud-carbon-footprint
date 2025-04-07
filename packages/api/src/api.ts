@@ -9,10 +9,10 @@ import {
   FootprintApiMiddleware,
   EmissionsApiMiddleware,
   RecommendationsApiMiddleware,
-  TenantConfigMiddleware,
   TestConnectionMiddleware,
   HealthCheckMiddleware,
   FootprintV2ApiMiddleware,
+  RecommendationsV2ApiMiddleware,
 } from './middleware'
 import Migration from './Migration'
 
@@ -595,6 +595,12 @@ export const createRouter = (config?: CCFConfig) => {
    *     produces:
    *       - application/json
    *     parameters:
+   *      - name: x-tenant-id
+   *        in: header
+   *        required: true
+   *        schema:
+   *          type: string
+   *        description: Tenant identifier for the request
    *      - name: start
    *        in: query
    *        description: The start date for the footprint; e.g. 2022-10-18
@@ -673,6 +679,14 @@ export const createRouter = (config?: CCFConfig) => {
    *            type: string
    *        description: List of resource tags to include in estimates (MongoDB only, Filter)
    *        required: false
+   *      - name: configs
+   *        in: query
+   *        schema:
+   *          type: array
+   *          items:
+   *            type: string
+   *        description: List of configuration IDs to use for fetching estimates
+   *        required: true
    *     responses:
    *       200:
    *         description: Success
@@ -690,9 +704,6 @@ export const createRouter = (config?: CCFConfig) => {
    *         description: Internal Server Error
    */
   router.get('/footprintv2', FootprintV2ApiMiddleware)
-
-  // Apply tenant middleware to all other endpoints
-  router.use(TenantConfigMiddleware)
 
   /**
    * @openapi
@@ -911,6 +922,51 @@ export const createRouter = (config?: CCFConfig) => {
    *                   format: date-time
    */
   router.get('/healthz', HealthCheckMiddleware)
+
+  /**
+   * @openapi
+   * /api/recommendationsV2:
+   *  get:
+   *     tags:
+   *     - Recommendations
+   *     description: V2 version of recommendations API that bypasses tenant middleware
+   *     parameters:
+   *      - name: x-tenant-id
+   *        in: header
+   *        required: true
+   *        schema:
+   *          type: string
+   *        description: Tenant identifier for the request
+   *      - name: awsRecommendationTarget
+   *        in: query
+   *        description: Defines whether targeted AWS recommendations should be within the same family
+   *        schema:
+   *          type: string
+   *          enum: [SAME_INSTANCE_FAMILY, CROSS_INSTANCE_FAMILY]
+   *        required: true
+   *      - name: configs
+   *        in: query
+   *        schema:
+   *          type: array
+   *          items:
+   *            type: string
+   *        description: List of configuration IDs to use for fetching recommendations
+   *        required: true
+   *     responses:
+   *       200:
+   *         description: Success
+   *         content:
+   *           application/json:
+   *            schema:
+   *              type: array
+   *              items:
+   *                $ref: '#/components/schemas/RecommendationsResponse'
+   *       400:
+   *         description: Bad request
+   *       500:
+   *         description: Internal Server Error
+   */
+  router.get('/recommendationsV2', RecommendationsV2ApiMiddleware)
 
   return router
 }

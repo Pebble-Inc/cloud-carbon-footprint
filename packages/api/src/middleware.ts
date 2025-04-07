@@ -14,57 +14,22 @@ import {
   Tags,
 } from '@cloud-carbon-footprint/app'
 
-import TenantConfigService from './TenantConfigServiceApi'
-import TestConnectionService from './TestConnectionService'
 import {
+  configLoader,
   EstimationRequestValidationError,
   Logger,
   PartialDataError,
   RecommendationsRequestValidationError,
-  configLoader,
-  setConfig,
 } from '@cloud-carbon-footprint/common'
+import TestConnectionService from './TestConnectionService'
 
-import { mergeConfig } from './mergeConfig'
-import { FalconFootprint, FootprintV2EstimatesRawRequest } from './FalconFootprint'
+import {
+  FalconFootprint,
+  FootprintV2EstimatesRawRequest,
+  RecommendationsV2RawRequest,
+} from './FalconFootprint'
 
 const apiLogger = new Logger('api')
-
-/**
- * Middleware that loads configuration based on x-config-id header.
- * If no config ID is provided or no configuration is found, falls back to environment variables.
- */
-export const TenantConfigMiddleware = async function (
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction,
-): Promise<void> {
-  const configId = req.headers['x-config-id'] as string
-
-  if (!configId) {
-    apiLogger.info(
-      'No config ID provided, using default environment configuration',
-    )
-    return next()
-  }
-
-  try {
-    const tenantConfigService = new TenantConfigService()
-    const config = await tenantConfigService.getConfigById(configId)
-
-    if (!config) {
-      apiLogger.warn(`No configuration found for configId: ${configId}`)
-      return next()
-    }
-
-    const newConfig = mergeConfig(config.configDoc)
-    setConfig(newConfig)
-    next()
-  } catch (error) {
-    apiLogger.error('Error loading configuration:', error)
-    res.status(500).json({ error: 'Error loading configuration' })
-  }
-}
 
 /**
  * Handles the fetching and calculations of cloud footprint estimates for a given date range.
@@ -268,6 +233,7 @@ export const FootprintV2ApiMiddleware = async function (
     regions: req.query.regions as string[],
     tags: req.query.tags as Tags,
     configs: req.query.configs as string[],
+    tenantId: req.headers['x-tenant-id'] as string,
   }
 
   if (!rawRequest.groupBy) {
@@ -290,6 +256,35 @@ export const FootprintV2ApiMiddleware = async function (
       res.status(400).json({ error: errorMessage })
     } else if (errorMessage.includes('Partial data error')) {
       res.status(416).json({ error: errorMessage })
+    } else {
+      res.status(500).json({ error: errorMessage })
+    }
+  }
+}
+
+export const RecommendationsV2ApiMiddleware = async function (
+  req: express.Request,
+  res: express.Response,
+): Promise<void> {
+  const rawRequest: RecommendationsV2RawRequest = {
+    awsRecommendationTarget: req.query.awsRecommendationTarget?.toString(),
+    configs: req.query.configs as string[],
+    tenantId: req.headers['x-tenant-id'] as string,
+  }
+
+  const falconFootprint = new FalconFootprint()
+  try {
+    const recommendations = await falconFootprint.processRecommendationsRequest(
+      rawRequest,
+    )
+    res.status(200).json(recommendations)
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred'
+    if (errorMessage.includes('Tenant ID parameter not specified')) {
+      res.status(400).json({ error: errorMessage })
+    } else if (errorMessage.includes('Invalid request')) {
+      res.status(400).json({ error: errorMessage })
     } else {
       res.status(500).json({ error: errorMessage })
     }

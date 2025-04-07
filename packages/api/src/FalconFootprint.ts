@@ -1,5 +1,13 @@
-import { EstimationResult } from '@cloud-carbon-footprint/common'
-import { FootprintEstimatesRawRequest, Tags } from '@cloud-carbon-footprint/app'
+import {
+  EstimationResult,
+  RecommendationResult,
+  RecommendationsRequestValidationError,
+} from '@cloud-carbon-footprint/common'
+import {
+  createValidRecommendationsRequest,
+  FootprintEstimatesRawRequest,
+  Tags,
+} from '@cloud-carbon-footprint/app'
 import { Logger } from '@cloud-carbon-footprint/common'
 import { createValidFootprintRequest } from '@cloud-carbon-footprint/app'
 import { App } from '@cloud-carbon-footprint/app'
@@ -24,6 +32,13 @@ export interface FootprintV2EstimatesRawRequest {
   regions?: string[]
   tags?: Tags
   configs?: string[]
+  tenantId: string
+}
+
+export interface RecommendationsV2RawRequest {
+  awsRecommendationTarget?: string
+  configs?: string[]
+  tenantId: string
 }
 
 export class FalconFootprint {
@@ -38,18 +53,28 @@ export class FalconFootprint {
   public async processFootprintRequest(
     rawRequest: FootprintV2EstimatesRawRequest,
   ): Promise<EstimationResult[]> {
-    if (!rawRequest.accounts) {
-      throw new Error('Accounts parameter not specified')
+    const tenantId = rawRequest.tenantId
+    if (!tenantId) {
+      throw new Error('Tenant ID parameter not specified')
     }
+
+    const allTenantConfigs =
+      await this.tenantConfigService.getConfigsByTenantId(tenantId)
 
     const { configs, ...rest } = rawRequest
     const estimationResults: EstimationResult[] = []
 
-    for (const configId of configs) {
+    const configsToUse =
+      configs && configs.length > 0
+        ? allTenantConfigs.filter((config) => configs.includes(config.configId))
+        : allTenantConfigs
+
+    for (const config of configsToUse) {
       try {
-        const config = await this.tenantConfigService.getConfigById(configId)
         if (!config) {
-          throw new Error(`Configuration not found for account: ${configId}`)
+          throw new Error(
+            `Configuration not found for account: ${config.configId}`,
+          )
         }
 
         const footprintApp = new App()
@@ -66,17 +91,19 @@ export class FalconFootprint {
         const filteredResults = this.applyFilters(results, rawRequest)
         estimationResults.push(...filteredResults)
       } catch (e) {
-        this.logger.error(`Error processing config ${configId}:`, e)
+        this.logger.error(`Error processing config ${config.configId}:`, e)
         if (e instanceof EstimationRequestValidationError) {
           throw new Error(
-            `Invalid request for config ${configId}: ${e.message}`,
+            `Invalid request for config ${config.configId}: ${e.message}`,
           )
         } else if (e instanceof PartialDataError) {
           throw new Error(
-            `Partial data error for config ${configId}: ${e.message}`,
+            `Partial data error for config ${config.configId}: ${e.message}`,
           )
         } else {
-          throw new Error(`Internal server error processing config ${configId}`)
+          throw new Error(
+            `Internal server error processing config ${config.configId}`,
+          )
         }
       }
     }
@@ -100,5 +127,59 @@ export class FalconFootprint {
         return true
       }),
     }))
+  }
+
+  public async processRecommendationsRequest(
+    rawRequest: RecommendationsV2RawRequest,
+  ): Promise<RecommendationResult[]> {
+    const tenantId = rawRequest.tenantId
+    if (!tenantId) {
+      throw new Error('Tenant ID parameter not specified')
+    }
+
+    const allTenantConfigs =
+      await this.tenantConfigService.getConfigsByTenantId(tenantId)
+    const { configs, ...rest } = rawRequest
+    const recommendationsResults: RecommendationResult[] = []
+
+    const configsToUse =
+      configs && configs.length > 0
+        ? allTenantConfigs.filter((config) => configs.includes(config.configId))
+        : allTenantConfigs
+
+    for (const config of configsToUse) {
+      try {
+        if (!config) {
+          throw new Error(
+            `Configuration not found for config: ${config.configId}`,
+          )
+        }
+
+        const footprintApp = new App()
+        const newConfig = mergeConfig(config.configDoc)
+        setConfig(newConfig)
+        const recommendationsRequest = createValidRecommendationsRequest(rest)
+        const results = await footprintApp.getRecommendations(
+          recommendationsRequest,
+        )
+        recommendationsResults.push(...results)
+      } catch (e) {
+        this.logger.error(
+          `Error processing recommendations for config ${config.configId}:`,
+          e,
+        )
+        if (e instanceof RecommendationsRequestValidationError) {
+          throw new Error(
+            `Invalid request for config ${config.configId}: ${e.message}`,
+          )
+        } else {
+          throw new Error(
+            `Internal server error processing config ${config.configId}`,
+          )
+        }
+      }
+    }
+
+    return recommendationsResults
   }
 }
