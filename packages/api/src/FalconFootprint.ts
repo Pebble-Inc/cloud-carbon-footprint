@@ -1,4 +1,5 @@
 import {
+  configLoader,
   EstimationResult,
   RecommendationResult,
   RecommendationsRequestValidationError,
@@ -80,6 +81,7 @@ export class FalconFootprint {
         const footprintApp = new App()
         const newConfig = mergeConfig(config.configDoc)
         setConfig(newConfig)
+        console.log('fetching footprint for config', configLoader())
         const estimationRequest = createValidFootprintRequest({
           ...rest,
         })
