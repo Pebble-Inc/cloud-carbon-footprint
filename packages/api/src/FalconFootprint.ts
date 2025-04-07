@@ -1,5 +1,5 @@
 import { EstimationResult } from '@cloud-carbon-footprint/common'
-import { FootprintEstimatesRawRequest } from '@cloud-carbon-footprint/app'
+import { FootprintEstimatesRawRequest, Tags } from '@cloud-carbon-footprint/app'
 import { Logger } from '@cloud-carbon-footprint/common'
 import { createValidFootprintRequest } from '@cloud-carbon-footprint/app'
 import { App } from '@cloud-carbon-footprint/app'
@@ -9,6 +9,22 @@ import {
   EstimationRequestValidationError,
   PartialDataError,
 } from '@cloud-carbon-footprint/common'
+
+export interface FootprintV2EstimatesRawRequest {
+  startDate?: string
+  endDate?: string
+  cloudProviderToSeed?: string
+  ignoreCache?: string
+  groupBy?: string
+  limit?: string
+  skip?: string
+  cloudProviders?: string[]
+  accounts?: string[]
+  services?: string[]
+  regions?: string[]
+  tags?: Tags
+  configs?: string[]
+}
 
 export class FalconFootprint {
   private logger: Logger
@@ -20,20 +36,20 @@ export class FalconFootprint {
   }
 
   public async processFootprintRequest(
-    rawRequest: FootprintEstimatesRawRequest,
+    rawRequest: FootprintV2EstimatesRawRequest,
   ): Promise<EstimationResult[]> {
     if (!rawRequest.accounts) {
       throw new Error('Accounts parameter not specified')
     }
 
-    const { accounts, ...rest } = rawRequest
+    const { configs, ...rest } = rawRequest
     const estimationResults: EstimationResult[] = []
 
-    for (const account of accounts) {
+    for (const configId of configs) {
       try {
-        const config = await this.tenantConfigService.getConfigById(account)
+        const config = await this.tenantConfigService.getConfigById(configId)
         if (!config) {
-          throw new Error(`Configuration not found for account: ${account}`)
+          throw new Error(`Configuration not found for account: ${configId}`)
         }
 
         const footprintApp = new App()
@@ -41,7 +57,6 @@ export class FalconFootprint {
         setConfig(newConfig)
         const estimationRequest = createValidFootprintRequest({
           ...rest,
-          accounts: [],
         })
         const results = await footprintApp.getCostAndEstimates(
           estimationRequest,
@@ -51,17 +66,17 @@ export class FalconFootprint {
         const filteredResults = this.applyFilters(results, rawRequest)
         estimationResults.push(...filteredResults)
       } catch (e) {
-        this.logger.error(`Error processing account ${account}:`, e)
+        this.logger.error(`Error processing config ${configId}:`, e)
         if (e instanceof EstimationRequestValidationError) {
           throw new Error(
-            `Invalid request for account ${account}: ${e.message}`,
+            `Invalid request for config ${configId}: ${e.message}`,
           )
         } else if (e instanceof PartialDataError) {
           throw new Error(
-            `Partial data error for account ${account}: ${e.message}`,
+            `Partial data error for config ${configId}: ${e.message}`,
           )
         } else {
-          throw new Error(`Internal server error processing account ${account}`)
+          throw new Error(`Internal server error processing config ${configId}`)
         }
       }
     }

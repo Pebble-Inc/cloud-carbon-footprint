@@ -26,7 +26,7 @@ import {
 } from '@cloud-carbon-footprint/common'
 
 import { mergeConfig } from './mergeConfig'
-import { FalconFootprint } from './FalconFootprint'
+import { FalconFootprint, FootprintV2EstimatesRawRequest } from './FalconFootprint'
 
 const apiLogger = new Logger('api')
 
@@ -255,7 +255,7 @@ export const FootprintV2ApiMiddleware = async function (
 ): Promise<void> {
   // Set the request time out to 10 minutes to allow the request enough time to complete.
   req.socket.setTimeout(1000 * 60 * 10)
-  const rawRequest: FootprintEstimatesRawRequest = {
+  const rawRequest: FootprintV2EstimatesRawRequest = {
     startDate: req.query.start?.toString(),
     endDate: req.query.end?.toString(),
     ignoreCache: req.query.ignoreCache?.toString(),
@@ -267,6 +267,7 @@ export const FootprintV2ApiMiddleware = async function (
     services: req.query.services as string[],
     regions: req.query.regions as string[],
     tags: req.query.tags as Tags,
+    configs: req.query.configs as string[],
   }
 
   if (!rawRequest.groupBy) {
