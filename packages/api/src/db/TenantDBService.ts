@@ -12,7 +12,6 @@ export default class TenantDBService {
     if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASS || !process.env.DB_NAME) {
       throw new Error('Database configuration is missing environment variables');
     }
-
     this.pool = new Pool({
       host: process.env.DB_HOST,
       port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 5432,
@@ -50,7 +49,6 @@ export default class TenantDBService {
       throw error
     }
   }
-
   async closePool(): Promise<void> {
     await this.pool.end();
     this.serviceLogger.info('Database connection pool closed.');

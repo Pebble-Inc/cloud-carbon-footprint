@@ -140,6 +140,7 @@ jobs:
           echo DB_PASS=$DB_PASS >> $GITHUB_ENV
           echo DB_NAME=$DB_NAME >> $GITHUB_ENV
           echo DB_SSL=$DB_SSL   >> $GITHUB_ENV
+          
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1

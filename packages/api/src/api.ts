@@ -10,9 +10,10 @@ import {
   FootprintApiMiddleware,
   EmissionsApiMiddleware,
   RecommendationsApiMiddleware,
-  TenantConfigMiddleware,
   TestConnectionMiddleware,
   HealthCheckMiddleware,
+  FootprintV2ApiMiddleware,
+  RecommendationsV2ApiMiddleware,
 } from './middleware'
 import Migration from './Migration'
 export const createRouter = (config?: CCFConfig) => {
@@ -593,8 +594,126 @@ export const createRouter = (config?: CCFConfig) => {
     },
   )
 
-  // Apply tenant middleware to all other endpoints
-  router.use(TenantConfigMiddleware)
+  /**
+   * @openapi
+   * /api/footprintv2:
+   *  get:
+   *     tags:
+   *     - Footprint
+   *     summary: Gets calculated energy and carbon estimates for a given date range (V2)
+   *     description: V2 version of the footprint API that bypasses tenant middleware
+   *     produces:
+   *       - application/json
+   *     parameters:
+   *      - name: x-tenant-id
+   *        in: header
+   *        required: true
+   *        schema:
+   *          type: string
+   *        description: Tenant identifier for the request
+   *      - name: start
+   *        in: query
+   *        description: The start date for the footprint; e.g. 2022-10-18
+   *        schema:
+   *          type: string
+   *        required: true
+   *      - name: end
+   *        in: query
+   *        schema:
+   *          type: string
+   *        description: The end date for the footprint
+   *        required: true
+   *      - name: ignoreCache
+   *        in: query
+   *        schema:
+   *          type: boolean
+   *          default: false
+   *        required: false
+   *      - name: groupBy
+   *        in: query
+   *        schema:
+   *          type: string
+   *          default: day
+   *        required: false
+   *      - name: limit
+   *        in: query
+   *        schema:
+   *          type: number
+   *          default: 50000
+   *        description: The maximum number of estimates to return (MongoDB only, ignoreCache=false)
+   *        required: false
+   *      - name: skip
+   *        in: query
+   *        schema:
+   *          type: number
+   *          default: 0
+   *        description: The maximum number of estimates to skip over (MongoDB only, ignoreCache=false)
+   *        required: false
+   *      - name: cloudProviders
+   *        in: query
+   *        schema:
+   *          type: array
+   *          items:
+   *            type: string
+   *        description: List of Cloud Providers to include in estimates (MongoDB only, Filter)
+   *        required: false
+   *      - name: accounts
+   *        in: query
+   *        schema:
+   *          type: array
+   *          items:
+   *            type: string
+   *        description: List of accounts to include in estimates (MongoDB only, Filter)
+   *        required: false
+   *      - name: services
+   *        in: query
+   *        schema:
+   *          type: array
+   *          items:
+   *            type: string
+   *        description: List of services to include in estimates (MongoDB only, Filter)
+   *        required: false
+   *      - name: regions
+   *        in: query
+   *        schema:
+   *          type: array
+   *          items:
+   *            type: string
+   *        description: List of regions to include in estimates (MongoDB only, Filter)
+   *        required: false
+   *      - name: tags
+   *        in: query
+   *        schema:
+   *          type: object
+   *          additionalProperties:
+   *            type: string
+   *        description: List of resource tags to include in estimates (MongoDB only, Filter)
+   *        required: false
+   *      - name: configs
+   *        in: query
+   *        schema:
+   *          type: array
+   *          items:
+   *            type: string
+   *        description: List of configuration IDs to use for fetching estimates
+   *        required: true
+   *     responses:
+   *       200:
+   *         description: Success
+   *         content:
+   *          application/json:
+   *            schema:
+   *                type: array
+   *                items:
+   *                  $ref: '#/components/schemas/FootprintResponse'
+   *       400:
+   *         description: Bad request
+   *       416:
+   *         description: Partial Data Error
+   *       500:
+   *         description: Internal Server Error
+   */
+  router.get('/footprintv2', FootprintV2ApiMiddleware)
 
   /**
    * @openapi
@@ -813,6 +932,51 @@ export const createRouter = (config?: CCFConfig) => {
    *                   format: date-time
    */
   router.get('/healthz', HealthCheckMiddleware)
+
+  /**
+   * @openapi
+   * /api/recommendationsV2:
+   *  get:
+   *     tags:
+   *     - Recommendations
+   *     description: V2 version of recommendations API that bypasses tenant middleware
+   *     parameters:
+   *      - name: x-tenant-id
+   *        in: header
+   *        required: true
+   *        schema:
+   *          type: string
+   *        description: Tenant identifier for the request
+   *      - name: awsRecommendationTarget
+   *        in: query
+   *        description: Defines whether targeted AWS recommendations should be within the same family
+   *        schema:
+   *          type: string
+   *          enum: [SAME_INSTANCE_FAMILY, CROSS_INSTANCE_FAMILY]
+   *        required: true
+   *      - name: configs
+   *        in: query
+   *        schema:
+   *          type: array
+   *          items:
+   *            type: string
+   *        description: List of configuration IDs to use for fetching recommendations
+   *        required: true
+   *     responses:
+   *       200:
+   *         description: Success
+   *         content:
+   *           application/json:
+   *            schema:
+   *              type: array
+   *              items:
+   *                $ref: '#/components/schemas/RecommendationsResponse'
+   *       400:
+   *         description: Bad request
+   *       500:
+   *         description: Internal Server Error
+   */
+  router.get('/recommendationsV2', RecommendationsV2ApiMiddleware)
 
   return router
 }
