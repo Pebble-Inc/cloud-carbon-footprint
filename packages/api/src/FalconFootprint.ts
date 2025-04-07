@@ -197,6 +197,8 @@ export class FalconFootprint {
         ? allTenantConfigs.filter((config) => configs.includes(config.configId))
         : allTenantConfigs
 
+    const initialConfig = configLoader()
+
     for (const config of configsToUse) {
       try {
         if (!config) {
@@ -206,8 +208,13 @@ export class FalconFootprint {
         }
 
         const footprintApp = new App()
+        setConfig(initialConfig)
         const newConfig = mergeConfig(config.configDoc)
         setConfig(newConfig)
+        console.log(
+          'fetching recommendations for config',
+          JSON.stringify(configLoader()),
+        )
         const recommendationsRequest = createValidRecommendationsRequest(rest)
         const results = await footprintApp.getRecommendations(
           recommendationsRequest,
