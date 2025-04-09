@@ -1,3 +1,7 @@
+/*
+ * © 2024 Thoughtworks, Inc.
+ */
+
 import {
   configLoader,
   EstimationResult,
@@ -19,6 +23,8 @@ import {
   PartialDataError,
 } from '@cloud-carbon-footprint/common'
 import { mergeConfig } from './mergeConfig'
+import FalconGCPAccountFactory from './GCP/FalconGCPAccountFactory'
+
 export interface FootprintV2EstimatesRawRequest {
   startDate?: string
   endDate?: string
@@ -45,6 +51,7 @@ export interface RecommendationsV2RawRequest {
 export class FalconFootprint {
   private logger: Logger
   private tenantConfigService: TenantConfigService
+  private gcpAccountFactory: FalconGCPAccountFactory
   private readonly serviceNameMappings: Record<string, Record<string, string>> =
     {
       AWS: {
@@ -64,12 +71,12 @@ export class FalconFootprint {
       ALI: {
         compute: 'AliCompute',
       },
-      // Add mappings for other cloud providers as needed
     }
 
   constructor() {
     this.logger = new Logger('FalconFootprint')
     this.tenantConfigService = new TenantConfigService()
+    this.gcpAccountFactory = new FalconGCPAccountFactory()
   }
 
   public async processFootprintRequest(
@@ -105,20 +112,48 @@ export class FalconFootprint {
         setConfig(initialConfig)
         const newConfig = mergeConfig(config.configDoc)
         setConfig(newConfig)
-        console.log(
-          'fetching footprint for config',
-          JSON.stringify(configLoader()),
-        )
-        const estimationRequest = createValidFootprintRequest({
-          ...rest,
-        })
-        const results = await footprintApp.getCostAndEstimates(
-          estimationRequest,
-        )
 
-        // Apply filters before adding to results
-        const filteredResults = this.applyFilters(results, rawRequest)
-        estimationResults.push(...filteredResults)
+        // Handle GCP data separately if GCP is in the cloud providers list
+        if (
+          rawRequest.cloudProviders?.includes('GCP') &&
+          config.configDoc.GCP
+        ) {
+          const gcpConfig = config.configDoc.GCP
+          const gcpAccount = await this.gcpAccountFactory.createGCPAccount(
+            config.configId,
+            gcpConfig.BILLING_PROJECT_ID,
+            gcpConfig.CURRENT_REGIONS,
+          )
+
+          // Get data from billing export table
+          const startDate = rawRequest.startDate
+            ? new Date(rawRequest.startDate)
+            : new Date()
+          const endDate = rawRequest.endDate
+            ? new Date(rawRequest.endDate)
+            : new Date()
+          const grouping = rawRequest.groupBy as any // TODO: Add proper type
+
+          const gcpResults = await gcpAccount.getDataFromBillingExportTable(
+            startDate,
+            endDate,
+            grouping,
+          )
+
+          // Apply filters and add to results
+          const filteredResults = this.applyFilters(gcpResults, rawRequest)
+          estimationResults.push(...filteredResults)
+        } else {
+          // Handle other cloud providers as before
+          const estimationRequest = createValidFootprintRequest({
+            ...rest,
+          })
+          const results = await footprintApp.getCostAndEstimates(
+            estimationRequest,
+          )
+          const filteredResults = this.applyFilters(results, rawRequest)
+          estimationResults.push(...filteredResults)
+        }
       } catch (e) {
         this.logger.error(`Error processing config ${config.configId}:`, e)
         if (e instanceof EstimationRequestValidationError) {
@@ -207,19 +242,29 @@ export class FalconFootprint {
           )
         }
 
-        const footprintApp = new App()
-        setConfig(initialConfig)
-        const newConfig = mergeConfig(config.configDoc)
-        setConfig(newConfig)
-        console.log(
-          'fetching recommendations for config',
-          JSON.stringify(configLoader()),
-        )
-        const recommendationsRequest = createValidRecommendationsRequest(rest)
-        const results = await footprintApp.getRecommendations(
-          recommendationsRequest,
-        )
-        recommendationsResults.push(...results)
+        // Handle GCP recommendations separately if GCP is configured
+        if (config.configDoc.GCP) {
+          const gcpConfig = config.configDoc.GCP
+          const gcpAccount = await this.gcpAccountFactory.createGCPAccount(
+            config.configId,
+            gcpConfig.BILLING_PROJECT_ID,
+            gcpConfig.CURRENT_REGIONS,
+          )
+          const gcpRecommendations =
+            await gcpAccount.getDataForRecommendations()
+          recommendationsResults.push(...gcpRecommendations)
+        } else {
+          // Handle other cloud providers as before
+          const footprintApp = new App()
+          setConfig(initialConfig)
+          const newConfig = mergeConfig(config.configDoc)
+          setConfig(newConfig)
+          const recommendationsRequest = createValidRecommendationsRequest(rest)
+          const results = await footprintApp.getRecommendations(
+            recommendationsRequest,
+          )
+          recommendationsResults.push(...results)
+        }
       } catch (e) {
         this.logger.error(
           `Error processing recommendations for config ${config.configId}:`,
