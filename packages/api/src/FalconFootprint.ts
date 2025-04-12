@@ -5,13 +5,14 @@
 import {
   configLoader,
   EstimationResult,
+  GroupBy,
   RecommendationResult,
   RecommendationsRequestValidationError,
 } from '@cloud-carbon-footprint/common'
 import {
   createValidRecommendationsRequest,
   FootprintEstimatesRawRequest,
-  Tags,
+  Tags
 } from '@cloud-carbon-footprint/app'
 import { Logger } from '@cloud-carbon-footprint/common'
 import { createValidFootprintRequest } from '@cloud-carbon-footprint/app'
@@ -23,7 +24,23 @@ import {
   PartialDataError,
 } from '@cloud-carbon-footprint/common'
 import { mergeConfig } from './mergeConfig'
-import FalconGCPAccountFactory from './GCP/FalconGCPAccountFactory'
+import { ITenantConfig } from './ITenantConfig'
+import FalconGCPAccount from './GCP/FalconGCPAccount'
+import { AccountDetails } from '@cloud-carbon-footprint/common'
+interface EstimationRequest {
+  startDate: Date;
+  endDate: Date;
+  cloudProviderToSeed?: string;
+  ignoreCache: boolean;
+  groupBy?: string;
+  limit?: number;
+  skip?: number;
+  cloudProviders?: string[];
+  accounts?: string[];
+  services?: string[];
+  regions?: string[];
+  tags?: Tags;
+}
 
 export interface FootprintV2EstimatesRawRequest {
   startDate?: string
@@ -51,7 +68,6 @@ export interface RecommendationsV2RawRequest {
 export class FalconFootprint {
   private logger: Logger
   private tenantConfigService: TenantConfigService
-  private gcpAccountFactory: FalconGCPAccountFactory
   private readonly serviceNameMappings: Record<string, Record<string, string>> =
     {
       AWS: {
@@ -76,7 +92,6 @@ export class FalconFootprint {
   constructor() {
     this.logger = new Logger('FalconFootprint')
     this.tenantConfigService = new TenantConfigService()
-    this.gcpAccountFactory = new FalconGCPAccountFactory()
   }
 
   public async processFootprintRequest(
@@ -113,47 +128,16 @@ export class FalconFootprint {
         const newConfig = mergeConfig(config.configDoc)
         setConfig(newConfig)
 
-        // Handle GCP data separately if GCP is in the cloud providers list
-        if (
-          rawRequest.cloudProviders?.includes('GCP') &&
-          config.configDoc.GCP
-        ) {
-          const gcpConfig = config.configDoc.GCP
-          const gcpAccount = await this.gcpAccountFactory.createGCPAccount(
-            config.configId,
-            gcpConfig.BILLING_PROJECT_ID,
-            gcpConfig.CURRENT_REGIONS,
-          )
-
-          // Get data from billing export table
-          const startDate = rawRequest.startDate
-            ? new Date(rawRequest.startDate)
-            : new Date()
-          const endDate = rawRequest.endDate
-            ? new Date(rawRequest.endDate)
-            : new Date()
-          const grouping = rawRequest.groupBy as any // TODO: Add proper type
-
-          const gcpResults = await gcpAccount.getDataFromBillingExportTable(
-            startDate,
-            endDate,
-            grouping,
-          )
-
-          // Apply filters and add to results
-          const filteredResults = this.applyFilters(gcpResults, rawRequest)
-          estimationResults.push(...filteredResults)
-        } else {
-          // Handle other cloud providers as before
+      
           const estimationRequest = createValidFootprintRequest({
             ...rest,
           })
-          const results = await footprintApp.getCostAndEstimates(
+          const results = await (this.isGCPConfig(config) ? this.getGCPData(config, estimationRequest) : footprintApp.getCostAndEstimates(
             estimationRequest,
-          )
+          ))
           const filteredResults = this.applyFilters(results, rawRequest)
           estimationResults.push(...filteredResults)
-        }
+        
       } catch (e) {
         this.logger.error(`Error processing config ${config.configId}:`, e)
         if (e instanceof EstimationRequestValidationError) {
@@ -244,15 +228,15 @@ export class FalconFootprint {
 
         // Handle GCP recommendations separately if GCP is configured
         if (config.configDoc.GCP) {
-          const gcpConfig = config.configDoc.GCP
-          const gcpAccount = await this.gcpAccountFactory.createGCPAccount(
-            config.configId,
-            gcpConfig.BILLING_PROJECT_ID,
-            gcpConfig.CURRENT_REGIONS,
-          )
-          const gcpRecommendations =
-            await gcpAccount.getDataForRecommendations()
-          recommendationsResults.push(...gcpRecommendations)
+          // const gcpConfig = config.configDoc.GCP
+          // const gcpAccount = await this.gcpAccountFactory.createGCPAccount(
+          //   config.configId,
+          //   gcpConfig.BILLING_PROJECT_ID,
+          //   gcpConfig.CURRENT_REGIONS,
+          // )
+          // const gcpRecommendations =
+          //   await gcpAccount.getDataForRecommendations()
+          // recommendationsResults.push(...gcpRecommendations)
         } else {
           // Handle other cloud providers as before
           const footprintApp = new App()
@@ -283,5 +267,67 @@ export class FalconFootprint {
     }
 
     return recommendationsResults
+  }
+
+  private async getGCPData(config: ITenantConfig, request: EstimationRequest): Promise<EstimationResult[]> {
+    // const gcpConfig = config.configDoc.GCP
+    //       const gcpAccount = await this.gcpAccountFactory.createGCPAccount(
+    //         config.configId,
+    //         gcpConfig.BILLING_PROJECT_ID,
+    //         gcpConfig.CURRENT_REGIONS,
+    //       )
+
+    //       // Get data from billing export table
+    //       const startDate = estimationRequest.startDate
+    //         ? new Date(estimationRequest.startDate)
+    //         : new Date()
+    //       const endDate = estimationRequest.endDate
+    //         ? new Date(estimationRequest.endDate)
+    //         : new Date()
+    //       const grouping = estimationRequest.groupBy as any // TODO: Add proper type
+
+    //       const gcpResults = await gcpAccount.getDataFromBillingExportTable(
+    //         startDate,
+    //         endDate,
+    //         grouping,
+    //       )
+    //       return gcpResults;
+
+    const {GCP} = config.configDoc;
+    const gcpResults:EstimationResult[] = []
+
+    const { startDate, endDate } = request;
+    const grouping = request.groupBy as GroupBy
+
+    if (GCP?.INCLUDE_ESTIMATES) {
+      this.logger.info('Starting GCP Estimations')
+      if (GCP?.USE_BILLING_DATA) {
+        const estimates = await new FalconGCPAccount(
+          GCP.BILLING_PROJECT_ID,
+          GCP.BILLING_PROJECT_NAME,
+          [],
+        ).getDataFromBillingExportTable(startDate, endDate, grouping)
+        gcpResults.push(...estimates)
+      } else if (GCP?.projects.length) {
+        const googleProjectDetails = GCP.projects as AccountDetails[]
+        // Resolve GCP Estimates asynchronously
+        for (const project of googleProjectDetails) {
+          const estimates = await Promise.all(
+            await new FalconGCPAccount(
+              project.id,
+              project.name,
+              GCP.CURRENT_REGIONS,
+            ).getDataForRegions(startDate, endDate, grouping),
+          )
+          gcpResults.push(...estimates)
+        }
+      }
+      this.logger.info('Finished GCP Estimations')
+    }
+   return gcpResults;
+  }
+
+  private isGCPConfig(config: ITenantConfig): boolean {
+    return Boolean(config.configDoc.GCP?.BILLING_PROJECT_ID)
   }
 }
