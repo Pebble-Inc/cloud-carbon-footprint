@@ -270,29 +270,6 @@ export class FalconFootprint {
   }
 
   private async getGCPData(config: ITenantConfig, request: EstimationRequest): Promise<EstimationResult[]> {
-    // const gcpConfig = config.configDoc.GCP
-    //       const gcpAccount = await this.gcpAccountFactory.createGCPAccount(
-    //         config.configId,
-    //         gcpConfig.BILLING_PROJECT_ID,
-    //         gcpConfig.CURRENT_REGIONS,
-    //       )
-
-    //       // Get data from billing export table
-    //       const startDate = estimationRequest.startDate
-    //         ? new Date(estimationRequest.startDate)
-    //         : new Date()
-    //       const endDate = estimationRequest.endDate
-    //         ? new Date(estimationRequest.endDate)
-    //         : new Date()
-    //       const grouping = estimationRequest.groupBy as any // TODO: Add proper type
-
-    //       const gcpResults = await gcpAccount.getDataFromBillingExportTable(
-    //         startDate,
-    //         endDate,
-    //         grouping,
-    //       )
-    //       return gcpResults;
-
     const {GCP} = config.configDoc;
     const gcpResults:EstimationResult[] = []
 
@@ -306,6 +283,7 @@ export class FalconFootprint {
           GCP.BILLING_PROJECT_ID,
           GCP.BILLING_PROJECT_NAME,
           [],
+          config.configId,
         ).getDataFromBillingExportTable(startDate, endDate, grouping)
         gcpResults.push(...estimates)
       } else if (GCP?.projects.length) {
@@ -317,6 +295,7 @@ export class FalconFootprint {
               project.id,
               project.name,
               GCP.CURRENT_REGIONS,
+              config.configId,
             ).getDataForRegions(startDate, endDate, grouping),
           )
           gcpResults.push(...estimates)

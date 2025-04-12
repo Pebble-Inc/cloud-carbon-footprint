@@ -14,7 +14,7 @@ import {
   ImagesClient,
   MachineTypesClient,
 } from '@google-cloud/compute'
-import { GoogleAuth } from 'google-auth-library'
+import { GoogleAuthClient, LookupTableOutput, LookupTableInput } from '@cloud-carbon-footprint/common'
 import {
   ICloudService,
   Region,
@@ -30,23 +30,39 @@ import {
   configLoader,
   EstimationResult,
   RecommendationResult,
-  GoogleAuthClient,
-  LookupTableInput,
-  LookupTableOutput,
   GroupBy,
 } from '@cloud-carbon-footprint/common'
 import { BillingExportTable, ComputeEngine } from '@cloud-carbon-footprint/gcp'
 import { GCP_CLOUD_CONSTANTS, getGCPEmissionsFactors } from '@cloud-carbon-footprint/gcp'
 import { ServiceWrapper } from './lib/ServiceWrapper'
 import { Recommendations } from './lib/Recommendations'
+import FalconGCPAuthService from './FalconGCPAuthService'
+import { AuthClientWrapper } from './lib/AuthClientWrapper'
 
 export default class FalconGCPAccount extends CloudProviderAccount {
+  private googleAuthClient: GoogleAuthClient | null = null
+  private authService: FalconGCPAuthService
+
   constructor(
     public id: string,
     public name: string,
     private regions: string[],
+    private configId: string,
   ) {
     super()
+    this.authService = new FalconGCPAuthService()
+  }
+
+  private async getAuthClient(): Promise<GoogleAuthClient> {
+    if (!this.googleAuthClient) {
+      this.googleAuthClient = await this.authService.getAuthenticatedClient(this.configId)
+    }
+    return this.googleAuthClient
+  }
+
+  private async getWrappedAuthClient(): Promise<AuthClientWrapper> {
+    const authClient = await this.getAuthClient()
+    return new AuthClientWrapper(authClient)
   }
 
   async getDataForRegions(
@@ -54,6 +70,11 @@ export default class FalconGCPAccount extends CloudProviderAccount {
     endDate: Date,
     grouping: GroupBy,
   ): Promise<EstimationResult[]> {
+    const authClient = await this.getWrappedAuthClient()
+    const options: ClientOptions = {
+      projectId: this.id,
+      authClient,
+    }
     const estimationResults = await Promise.all(
       this.regions.map(async (regionId) => {
         return await this.getDataForRegion(
@@ -93,6 +114,12 @@ export default class FalconGCPAccount extends CloudProviderAccount {
     endDate: Date,
     grouping: GroupBy,
   ): Promise<EstimationResult[]> {
+    const authClient = await this.getWrappedAuthClient()
+    const bigquery = new BigQuery({ 
+      projectId: this.id,
+      authClient,
+    })
+    
     const billingExportTableService = new BillingExportTable(
       new ComputeEstimator(),
       new StorageEstimator(GCP_CLOUD_CONSTANTS.SSDCOEFFICIENT),
@@ -103,7 +130,7 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       new EmbodiedEmissionsEstimator(
         GCP_CLOUD_CONSTANTS.SERVER_EXPECTED_LIFESPAN,
       ),
-      new BigQuery({ projectId: this.id }),
+      bigquery,
     )
     return await billingExportTableService.getEstimates(
       startDate,
@@ -136,14 +163,11 @@ export default class FalconGCPAccount extends CloudProviderAccount {
   }
 
   async getDataForRecommendations(): Promise<RecommendationResult[]> {
-    const auth = new GoogleAuth({
-      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-    })
-    const googleAuthClient: GoogleAuthClient = await auth.getClient()
+    const authClient = await this.getWrappedAuthClient()
 
     const serviceWrapper = new ServiceWrapper(
       new ProjectsClient(),
-      googleAuthClient,
+      authClient,
       new InstancesClient(),
       new DisksClient(),
       new AddressesClient(),
@@ -167,6 +191,7 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       throw new Error('Unsupported service: ' + key)
     const options: ClientOptions = {
       projectId: this.id,
+      authClient: this.googleAuthClient ? new AuthClientWrapper(this.googleAuthClient) : undefined,
     }
     return this.services[key](options)
   }
