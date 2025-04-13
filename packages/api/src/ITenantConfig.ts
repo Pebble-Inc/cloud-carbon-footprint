@@ -14,7 +14,7 @@ export interface ITenantConfig {
   updatedAt: Date
   configDoc: {
     AWS?: CCFConfig['AWS']
-    GCP?: CCFConfig['GCP']
+    GCP?: CCFConfig['GCP'] & { WIF_CONFIG_ID?: string }
     AZURE?: CCFConfig['AZURE']
     ALI?: CCFConfig['ALI']
     LOGGING_MODE?: string

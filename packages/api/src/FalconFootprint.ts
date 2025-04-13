@@ -283,7 +283,7 @@ export class FalconFootprint {
           GCP.BILLING_PROJECT_ID,
           GCP.BILLING_PROJECT_NAME,
           [],
-          config.configId,
+          GCP.WIF_CONFIG_ID,
         ).getDataFromBillingExportTable(startDate, endDate, grouping)
         gcpResults.push(...estimates)
       } else if (GCP?.projects.length) {
@@ -295,7 +295,7 @@ export class FalconFootprint {
               project.id,
               project.name,
               GCP.CURRENT_REGIONS,
-              config.configId,
+              GCP.WIF_CONFIG_ID,
             ).getDataForRegions(startDate, endDate, grouping),
           )
           gcpResults.push(...estimates)

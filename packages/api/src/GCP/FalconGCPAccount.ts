@@ -47,7 +47,7 @@ export default class FalconGCPAccount extends CloudProviderAccount {
     public id: string,
     public name: string,
     private regions: string[],
-    private configId: string,
+    private wifConfigId: string,
   ) {
     super()
     this.authService = new FalconGCPAuthService()
@@ -55,7 +55,7 @@ export default class FalconGCPAccount extends CloudProviderAccount {
 
   private async getAuthClient(): Promise<GoogleAuthClient> {
     if (!this.googleAuthClient) {
-      this.googleAuthClient = await this.authService.getAuthenticatedClient(this.configId)
+      this.googleAuthClient = await this.authService.getAuthenticatedClient(this.wifConfigId)
     }
     return this.googleAuthClient
   }
