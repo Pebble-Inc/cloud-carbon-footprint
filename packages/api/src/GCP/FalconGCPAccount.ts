@@ -14,7 +14,7 @@ import {
   ImagesClient,
   MachineTypesClient,
 } from '@google-cloud/compute'
-import { GoogleAuthClient, LookupTableOutput, LookupTableInput } from '@cloud-carbon-footprint/common'
+import { GoogleAuthClient, LookupTableOutput, LookupTableInput, Logger } from '@cloud-carbon-footprint/common'
 import {
   ICloudService,
   Region,
@@ -42,6 +42,7 @@ import { AuthClientWrapper } from './lib/AuthClientWrapper'
 export default class FalconGCPAccount extends CloudProviderAccount {
   private googleAuthClient: GoogleAuthClient | null = null
   private authService: FalconGCPAuthService
+  private readonly logger: Logger
 
   constructor(
     public id: string,
@@ -51,6 +52,7 @@ export default class FalconGCPAccount extends CloudProviderAccount {
   ) {
     super()
     this.authService = new FalconGCPAuthService()
+    this.logger = new Logger('FalconGCPAccount')
   }
 
   private async getAuthClient(): Promise<GoogleAuthClient> {
@@ -109,34 +111,82 @@ export default class FalconGCPAccount extends CloudProviderAccount {
     return await this.getRegionData('GCP', region, startDate, endDate, grouping)
   }
 
+  private async testBigQueryAccess(): Promise<void> {
+    try {
+      this.logger.info('Testing BigQuery access...')
+      const authClient = await this.getWrappedAuthClient()
+      const bigquery = new BigQuery({ 
+        projectId: this.id,
+        authClient,
+      })
+
+      // Test dataset listing
+      this.logger.info('Testing dataset listing...')
+      const [datasets] = await bigquery.getDatasets()
+      this.logger.info(`Successfully listed ${datasets.length} datasets`)
+
+      // Test simple query
+      this.logger.info('Testing simple query execution...')
+      const tableName = configLoader().GCP.BIG_QUERY_TABLE
+      const query = `SELECT COUNT(*) as count FROM \`${tableName}\` LIMIT 1`
+      
+      this.logger.info('Creating query job...')
+      const [job] = await bigquery.createQueryJob({
+        query,
+        location: 'US'
+      })
+      
+      this.logger.info('Getting query results...')
+      const [rows] = await job.getQueryResults()
+      this.logger.info(`Query successful. Row count: ${rows[0].count}`)
+
+    } catch (error) {
+      this.logger.error('BigQuery test failed:', error)
+      if (error.response?.data) {
+        this.logger.error('Error response:', error.response.data)
+      }
+      throw error
+    }
+  }
+
   async getDataFromBillingExportTable(
     startDate: Date,
     endDate: Date,
     grouping: GroupBy,
   ): Promise<EstimationResult[]> {
-    const authClient = await this.getWrappedAuthClient()
-    const bigquery = new BigQuery({ 
-      projectId: this.id,
-      authClient,
-    })
-    
-    const billingExportTableService = new BillingExportTable(
-      new ComputeEstimator(),
-      new StorageEstimator(GCP_CLOUD_CONSTANTS.SSDCOEFFICIENT),
-      new StorageEstimator(GCP_CLOUD_CONSTANTS.HDDCOEFFICIENT),
-      new NetworkingEstimator(GCP_CLOUD_CONSTANTS.NETWORKING_COEFFICIENT),
-      new MemoryEstimator(GCP_CLOUD_CONSTANTS.MEMORY_COEFFICIENT),
-      new UnknownEstimator(GCP_CLOUD_CONSTANTS.ESTIMATE_UNKNOWN_USAGE_BY),
-      new EmbodiedEmissionsEstimator(
-        GCP_CLOUD_CONSTANTS.SERVER_EXPECTED_LIFESPAN,
-      ),
-      bigquery,
-    )
-    return await billingExportTableService.getEstimates(
-      startDate,
-      endDate,
-      grouping,
-    )
+    try {
+      // Run test before actual query
+      await this.testBigQueryAccess()
+      
+      this.logger.info('Proceeding with main billing data query...')
+      const authClient = await this.getWrappedAuthClient()
+      const bigquery = new BigQuery({ 
+        projectId: this.id,
+        authClient,
+      })
+      
+      const billingExportTableService = new BillingExportTable(
+        new ComputeEstimator(),
+        new StorageEstimator(GCP_CLOUD_CONSTANTS.SSDCOEFFICIENT),
+        new StorageEstimator(GCP_CLOUD_CONSTANTS.HDDCOEFFICIENT),
+        new NetworkingEstimator(GCP_CLOUD_CONSTANTS.NETWORKING_COEFFICIENT),
+        new MemoryEstimator(GCP_CLOUD_CONSTANTS.MEMORY_COEFFICIENT),
+        new UnknownEstimator(GCP_CLOUD_CONSTANTS.ESTIMATE_UNKNOWN_USAGE_BY),
+        new EmbodiedEmissionsEstimator(
+          GCP_CLOUD_CONSTANTS.SERVER_EXPECTED_LIFESPAN,
+        ),
+        bigquery,
+      )
+      
+      return await billingExportTableService.getEstimates(
+        startDate,
+        endDate,
+        grouping,
+      )
+    } catch (error) {
+      this.logger.error('Error in getDataFromBillingExportTable:', error)
+      throw error
+    }
   }
 
   static async getBillingExportDataFromInputData(
