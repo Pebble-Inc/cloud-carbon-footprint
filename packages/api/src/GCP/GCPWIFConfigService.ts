@@ -12,8 +12,56 @@ export default class GCPWIFConfigService {
     this.logger = new Logger('GCPWIFConfigService')
   }
 
+  private validateWIFConfig(config: Partial<IGCPWIFConfig>): void {
+    if (!config.config) {
+      throw new Error('WIF config is required')
+    }
+
+    const requiredFields = [
+      'universe_domain',
+      'type',
+      'audience',
+      'subject_token_type',
+      'token_url',
+    ]
+
+    const missingFields = requiredFields.filter(
+      (field) => !config.config[field],
+    )
+
+    if (missingFields.length > 0) {
+      throw new Error(
+        `Missing required WIF config fields: ${missingFields.join(', ')}`,
+      )
+    }
+
+    if (!config.config.credential_source) {
+      throw new Error('credential_source is required in WIF config')
+    }
+
+    const requiredCredentialSourceFields = [
+      'environment_id',
+      'region_url',
+      'url',
+      'regional_cred_verification_url',
+    ]
+
+    const missingCredentialSourceFields = requiredCredentialSourceFields.filter(
+      (field) => !config.config.credential_source[field],
+    )
+
+    if (missingCredentialSourceFields.length > 0) {
+      throw new Error(
+        `Missing required credential_source fields: ${missingCredentialSourceFields.join(
+          ', ',
+        )}`,
+      )
+    }
+  }
+
   async createConfig(config: Partial<IGCPWIFConfig>): Promise<IGCPWIFConfig> {
     try {
+      this.validateWIFConfig(config)
       const gcpWIFConfig = new GCPWIFConfig(config)
       const savedConfig = await gcpWIFConfig.save()
       this.logger.info(`Created GCP WIF configuration for tenant: ${config.tenantId}`)
@@ -24,11 +72,11 @@ export default class GCPWIFConfigService {
     }
   }
 
-  async getConfig(configId: string): Promise<IGCPWIFConfig | null> {
+  async getConfig(wifConfigId: string): Promise<IGCPWIFConfig | null> {
     try {
-      const config = await GCPWIFConfig.findOne({ configId }).lean()
+      const config = await GCPWIFConfig.findOne({ wifConfigId }).lean()
       if (!config) {
-        this.logger.warn(`No GCP WIF configuration found for configId: ${configId}`)
+        this.logger.warn(`No GCP WIF configuration found for wifConfigId: ${wifConfigId}`)
         return null
       }
       return config
@@ -49,18 +97,19 @@ export default class GCPWIFConfigService {
   }
 
   async updateConfig(
-    configId: string,
+    wifConfigId: string,
     config: Partial<IGCPWIFConfig>,
   ): Promise<IGCPWIFConfig | null> {
     try {
+      this.validateWIFConfig(config)
       const updatedConfig = await GCPWIFConfig.findOneAndUpdate(
-        { configId },
+        { wifConfigId },
         { ...config, updatedAt: new Date() },
         { new: true, lean: true },
       )
 
       if (updatedConfig) {
-        this.logger.info(`Updated GCP WIF configuration for configId: ${configId}`)
+        this.logger.info(`Updated GCP WIF configuration for wifConfigId: ${wifConfigId}`)
         return updatedConfig
       }
       return null
@@ -70,13 +119,13 @@ export default class GCPWIFConfigService {
     }
   }
 
-  async deleteConfig(configId: string): Promise<boolean> {
+  async deleteConfig(wifConfigId: string): Promise<boolean> {
     try {
-      const result = await GCPWIFConfig.deleteOne({ configId })
+      const result = await GCPWIFConfig.deleteOne({ wifConfigId })
       const deleted = result.deletedCount > 0
 
       if (deleted) {
-        this.logger.info(`Deleted GCP WIF configuration for configId: ${configId}`)
+        this.logger.info(`Deleted GCP WIF configuration for wifConfigId: ${wifConfigId}`)
       }
       return deleted
     } catch (error) {

@@ -45,7 +45,7 @@ export default class FalconGCPAuthService {
 
       // For now, we'll use the first config. In the future, we might want to handle multiple configs
       const config = configs[0]
-      return this.getAuthenticatedClient(config.configId)
+      return this.getAuthenticatedClient(config.wifConfigId)
     } catch (error) {
       this.logger.error('Error getting authenticated client for tenant:', error)
       throw error

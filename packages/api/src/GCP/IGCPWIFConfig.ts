@@ -5,7 +5,7 @@
 import mongoose, { Schema } from 'mongoose'
 
 export interface IGCPWIFConfig {
-  configId: string
+  wifConfigId: string
   tenantId: string
   createdAt: Date
   updatedAt: Date
@@ -26,13 +26,17 @@ export interface IGCPWIFConfig {
 
 const gcpWIFConfigSchema = new Schema(
   {
-    configId: {
+    wifConfigId: {
       type: String,
       required: true,
       unique: true,
       default: () => generateConfigId(),
     },
-    tenantId: { type: String, required: true },
+    tenantId: { 
+      type: String, 
+      required: true,
+      index: true 
+    },
     config: {
       universe_domain: { type: String, required: true },
       type: { type: String, required: true },

@@ -16,6 +16,8 @@ import {
   RecommendationsV2ApiMiddleware,
 } from './middleware'
 import Migration from './Migration'
+import GCPWIFConfigService from './GCP/GCPWIFConfigService'
+
 export const createRouter = (config?: CCFConfig) => {
   setConfig(config)
   const router = express.Router()
@@ -25,6 +27,7 @@ export const createRouter = (config?: CCFConfig) => {
   console.log('Debug: TenantConfigService type:', typeof TenantConfigService)
 
   const tenantConfigService = new TenantConfigService()
+  const gcpWIFConfigService = new GCPWIFConfigService()
   const migrationService = new Migration()
   const tenantDBService = new TenantDBService()
 
@@ -69,6 +72,83 @@ export const createRouter = (config?: CCFConfig) => {
         res.status(200).json(result)
       } catch (error) {
         res.status(500).json({ error: error.message })
+      }
+    },
+  )
+
+  /**
+   * @openapi
+   * /api/gcp-wif-configs:
+   *  post:
+   *     tags:
+   *     - GCP WIF Configuration
+   *     summary: Creates a new GCP Workload Identity Federation configuration
+   *     description: Creates a new WIF configuration for GCP authentication
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - tenantId
+   *               - config
+   *             properties:
+   *               tenantId:
+   *                 type: string
+   *                 description: Tenant ID associated with the WIF config
+   *               config:
+   *                 type: object
+   *                 required:
+   *                   - universe_domain
+   *                   - type
+   *                   - audience
+   *                   - subject_token_type
+   *                   - token_url
+   *                   - credential_source
+   *                 properties:
+   *                   universe_domain:
+   *                     type: string
+   *                   type:
+   *                     type: string
+   *                   audience:
+   *                     type: string
+   *                   subject_token_type:
+   *                     type: string
+   *                   token_url:
+   *                     type: string
+   *                   credential_source:
+   *                     type: object
+   *                     required:
+   *                       - environment_id
+   *                       - region_url
+   *                       - url
+   *                       - regional_cred_verification_url
+   *                     properties:
+   *                       environment_id:
+   *                         type: string
+   *                       region_url:
+   *                         type: string
+   *                       url:
+   *                         type: string
+   *                       regional_cred_verification_url:
+   *                         type: string
+   *     responses:
+   *       201:
+   *         description: WIF configuration created successfully
+   *       400:
+   *         description: Invalid request body
+   *       500:
+   *         description: Internal server error
+   */
+  router.post(
+    '/gcp-wif-configs',
+    async (req: express.Request, res: express.Response): Promise<void> => {
+      try {
+        const config = await gcpWIFConfigService.createConfig(req.body)
+        res.status(201).json(config)
+      } catch (error) {
+        res.status(400).json({ error: error.message })
       }
     },
   )
@@ -319,8 +399,20 @@ export const createRouter = (config?: CCFConfig) => {
     '/tenant-configs',
     async (req: express.Request, res: express.Response): Promise<void> => {
       try {
-        const config = await tenantConfigService.createConfig(req.body)
-        const awsAccounts = req.body.configDoc?.AWS?.accounts
+        const { wifConfigId, ...rest } = req.body
+
+        // If GCP config is present and wifConfigId is provided, validate it exists
+        if (rest.configDoc?.GCP && wifConfigId) {
+          const wifConfig = await gcpWIFConfigService.getConfig(wifConfigId)
+          if (!wifConfig) {
+            throw new Error(`WIF configuration not found for ID: ${wifConfigId}`)
+          }
+          // Set the WIF config ID in the GCP config
+          rest.configDoc.GCP.WIF_CONFIG_ID = wifConfigId
+        }
+
+        const config = await tenantConfigService.createConfig(rest)
+        const awsAccounts = rest.configDoc?.AWS?.accounts
         if (awsAccounts && awsAccounts.length > 0) {
           const { id: aws_account_id, region } = awsAccounts[0]
           await tenantDBService.addTenant(
