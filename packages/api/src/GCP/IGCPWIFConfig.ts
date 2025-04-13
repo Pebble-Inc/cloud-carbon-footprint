@@ -14,6 +14,7 @@ export interface IGCPWIFConfig {
     type: string
     audience: string
     subject_token_type: string
+    service_account_impersonation_url: string
     token_url: string
     credential_source: {
       environment_id: string
@@ -42,6 +43,7 @@ const gcpWIFConfigSchema = new Schema(
       type: { type: String, required: true },
       audience: { type: String, required: true },
       subject_token_type: { type: String, required: true },
+      service_account_impersonation_url: { type: String, required: true },
       token_url: { type: String, required: true },
       credential_source: {
         environment_id: { type: String, required: true },

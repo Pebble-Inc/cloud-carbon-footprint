@@ -22,6 +22,7 @@ export default class GCPWIFConfigService {
       'type',
       'audience',
       'subject_token_type',
+      'service_account_impersonation_url',
       'token_url',
     ]
 
