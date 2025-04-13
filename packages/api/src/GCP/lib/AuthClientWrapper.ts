@@ -102,12 +102,27 @@ export class AuthClientWrapper extends JWT {
   }
 
   async getRequestHeaders(): Promise<Record<string, string>> {
-    const headers = await this.authClient.getRequestHeaders()
-    return headers
+    try {
+      // First get AWS credentials
+      const credentials = await this.getAwsCredentials()
+      
+      // Then get the GCP token from the wrapped client
+      const gcpHeaders = await this.authClient.getRequestHeaders()
+      
+      // Combine the headers
+      return {
+        ...gcpHeaders,
+        'x-goog-cloud-target-resource': `//iam.googleapis.com/projects/-/serviceAccounts/${credentials.AccessKeyId}@${await this.getAwsRegion()}.iam.gserviceaccount.com`,
+        'x-goog-cloud-target-resource-type': 'iam.googleapis.com/ServiceAccount',
+      }
+    } catch (error) {
+      console.error('Error getting request headers:', error)
+      throw error
+    }
   }
 
   async getAccessToken(): Promise<GetAccessTokenResponse> {
-    const headers = await this.authClient.getRequestHeaders()
+    const headers = await this.getRequestHeaders()
     const token = headers.Authorization.replace('Bearer ', '')
     return {
       token,
