@@ -57,15 +57,19 @@ export default class FalconGCPAccount extends CloudProviderAccount {
     this.logger = new Logger('FalconGCPAccount')
   }
 
-  private httpGet(path: string): Promise<string> {
+  private async getIMDSv2Token(): Promise<string> {
     return new Promise((resolve, reject) => {
-      const request = http.get({
+      const request = http.request({
         hostname: '169.254.169.254',
-        path: path,
-        timeout: 5000
+        path: '/latest/api/token',
+        method: 'PUT',
+        timeout: 5000,
+        headers: {
+          'X-aws-ec2-metadata-token-ttl-seconds': '21600'
+        }
       }, (response) => {
         if (response.statusCode !== 200) {
-          reject(new Error(`Request failed with status: ${response.statusCode}`))
+          reject(new Error(`Token request failed with status: ${response.statusCode}`))
           return
         }
 
@@ -77,14 +81,57 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       request.on('error', reject)
       request.on('timeout', () => {
         request.destroy()
-        reject(new Error('Request timed out'))
+        reject(new Error('Token request timed out'))
       })
+
+      request.end()
     })
+  }
+
+  private async httpGet(path: string): Promise<string> {
+    try {
+      // Get IMDSv2 token first
+      const token = await this.getIMDSv2Token()
+      
+      return new Promise((resolve, reject) => {
+        const request = http.get({
+          hostname: '169.254.169.254',
+          path: path,
+          timeout: 5000,
+          headers: {
+            'X-aws-ec2-metadata-token': token
+          }
+        }, (response) => {
+          if (response.statusCode !== 200) {
+            reject(new Error(`Request failed with status: ${response.statusCode}`))
+            return
+          }
+
+          let data = ''
+          response.on('data', (chunk) => data += chunk)
+          response.on('end', () => resolve(data))
+        })
+
+        request.on('error', reject)
+        request.on('timeout', () => {
+          request.destroy()
+          reject(new Error('Request timed out'))
+        })
+      })
+    } catch (error) {
+      this.logger.error(`Error in httpGet for path ${path}:`, error)
+      throw error
+    }
   }
 
   private async testAWSMetadataAccess(): Promise<void> {
     try {
       this.logger.info('Testing AWS metadata service access...')
+      
+      // Test IMDSv2 token first
+      this.logger.info('Getting IMDSv2 token...')
+      await this.getIMDSv2Token()
+      this.logger.info('Successfully obtained IMDSv2 token')
       
       // Test region access
       this.logger.info('Testing region endpoint...')
