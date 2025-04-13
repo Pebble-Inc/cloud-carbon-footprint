@@ -38,6 +38,8 @@ import { ServiceWrapper } from './lib/ServiceWrapper'
 import { Recommendations } from './lib/Recommendations'
 import FalconGCPAuthService from './FalconGCPAuthService'
 import { AuthClientWrapper } from './lib/AuthClientWrapper'
+import axios from 'axios'
+import http from 'http'
 
 export default class FalconGCPAccount extends CloudProviderAccount {
   private googleAuthClient: GoogleAuthClient | null = null
@@ -53,6 +55,56 @@ export default class FalconGCPAccount extends CloudProviderAccount {
     super()
     this.authService = new FalconGCPAuthService()
     this.logger = new Logger('FalconGCPAccount')
+  }
+
+  private httpGet(path: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const request = http.get({
+        hostname: '169.254.169.254',
+        path: path,
+        timeout: 5000
+      }, (response) => {
+        if (response.statusCode !== 200) {
+          reject(new Error(`Request failed with status: ${response.statusCode}`))
+          return
+        }
+
+        let data = ''
+        response.on('data', (chunk) => data += chunk)
+        response.on('end', () => resolve(data))
+      })
+
+      request.on('error', reject)
+      request.on('timeout', () => {
+        request.destroy()
+        reject(new Error('Request timed out'))
+      })
+    })
+  }
+
+  private async testAWSMetadataAccess(): Promise<void> {
+    try {
+      this.logger.info('Testing AWS metadata service access...')
+      
+      // Test region access
+      this.logger.info('Testing region endpoint...')
+      const region = await this.httpGet('/latest/meta-data/placement/availability-zone')
+      this.logger.info(`Successfully accessed region: ${region}`)
+      
+      // Test credentials access
+      this.logger.info('Testing credentials endpoint...')
+      const roleName = await this.httpGet('/latest/meta-data/iam/security-credentials')
+      this.logger.info(`Successfully accessed credentials path, found role: ${roleName}`)
+      
+      // Test specific role credentials
+      this.logger.info(`Testing role credentials for: ${roleName}`)
+      const credentials = await this.httpGet(`/latest/meta-data/iam/security-credentials/${roleName}`)
+      this.logger.info('Successfully accessed role credentials')
+      
+    } catch (error) {
+      this.logger.error(`AWS metadata service test failed: ${error.message}`, error)
+      throw new Error(`AWS metadata service access failed: ${error.message}`)
+    }
   }
 
   private async getAuthClient(): Promise<GoogleAuthClient> {
@@ -113,6 +165,9 @@ export default class FalconGCPAccount extends CloudProviderAccount {
 
   private async testBigQueryAccess(): Promise<void> {
     try {
+      // First test AWS metadata access
+      await this.testAWSMetadataAccess()
+      
       this.logger.info('Testing BigQuery access...')
       const authClient = await this.getWrappedAuthClient()
       const bigquery = new BigQuery({ 
