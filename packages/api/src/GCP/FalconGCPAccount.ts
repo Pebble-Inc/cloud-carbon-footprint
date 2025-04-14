@@ -250,12 +250,26 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       // Get WIF configuration
       this.logger.info('Getting WIF configuration...')
       const wifConfig = await this.authService.getWIFConfig(this.wifConfigId)
+
+      // Get region using our working method
+      this.logger.info('Getting AWS region...')
+      const region = await this.httpGet('/latest/meta-data/placement/availability-zone')
+      const awsRegion = region.slice(0, -1) // Remove availability zone letter
+      this.logger.info(`Using AWS region: ${awsRegion}`)
       
       // Try direct initialization with external account config
       this.logger.info('Testing BigQuery with external account configuration...')
       const bigqueryDirect = new BigQuery({ 
         projectId: this.id,
-        credentials: wifConfig.config  // Use the config property which contains the actual configuration
+        location: awsRegion,
+        credentials: {
+          ...wifConfig.config,
+          credential_source: {
+            ...wifConfig.config.credential_source,
+            region_url: undefined, // Disable automatic region fetching
+            imdsv2_session_token_url: 'http://169.254.169.254/latest/api/token'
+          }
+        }
       })
 
       // Test dataset listing with direct config
@@ -272,6 +286,7 @@ export default class FalconGCPAccount extends CloudProviderAccount {
         const authClient = await this.getWrappedAuthClient()
         const bigquery = new BigQuery({ 
           projectId: this.id,
+          location: awsRegion,
           authClient,
         })
         
