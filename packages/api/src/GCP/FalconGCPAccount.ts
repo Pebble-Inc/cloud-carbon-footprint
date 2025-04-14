@@ -266,7 +266,6 @@ export default class FalconGCPAccount extends CloudProviderAccount {
           ...wifConfig.config,
           credential_source: {
             ...wifConfig.config.credential_source,
-            region_url: undefined, // Disable automatic region fetching
             imdsv2_session_token_url: 'http://169.254.169.254/latest/api/token'
           }
         }
