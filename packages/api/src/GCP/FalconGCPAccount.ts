@@ -257,9 +257,9 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       const awsRegion = region.slice(0, -1) // Remove availability zone letter
       this.logger.info(`Using AWS region: ${awsRegion}`)
       
-      // Try direct initialization with external account config
-      this.logger.info('Testing BigQuery with external account configuration...')
-      const bigqueryDirect = new BigQuery({ 
+      // Initialize BigQuery with external account config
+      this.logger.info('Initializing BigQuery with external account configuration...')
+      const bigquery = new BigQuery({ 
         projectId: this.id,
         location: awsRegion,
         credentials: {
@@ -271,27 +271,38 @@ export default class FalconGCPAccount extends CloudProviderAccount {
         }
       })
 
-      // Test dataset listing with direct config
-      this.logger.info('Testing dataset listing with external account config...')
-      try {
-        const [datasets] = await bigqueryDirect.getDatasets()
-        this.logger.info(`Successfully listed ${datasets.length} datasets using external account config`)
-        return
-      } catch (error) {
-        this.logger.error('Failed to list datasets with external account config:', error)
-        
-        // Fallback to original auth client approach
-        this.logger.info('Falling back to auth client approach...')
-        const authClient = await this.getWrappedAuthClient()
-        const bigquery = new BigQuery({ 
-          projectId: this.id,
-          location: awsRegion,
-          authClient,
-        })
-        
-        const [datasets] = await bigquery.getDatasets()
-        this.logger.info(`Successfully listed ${datasets.length} datasets using auth client`)
-      }
+      // Test 1: List datasets
+      this.logger.info('Test 1: Listing datasets...')
+      const [datasets] = await bigquery.getDatasets()
+      this.logger.info(`Successfully listed ${datasets.length} datasets`)
+
+      // Test 2: Create and run a simple query job
+      this.logger.info('Test 2: Creating and running a test query job...')
+      const query = 'SELECT 1 as test_column'
+      const [job] = await bigquery.createQueryJob({
+        query,
+        location: awsRegion // Ensure query runs in the same location
+      })
+      
+      this.logger.info(`Query job ${job.id} created, waiting for results...`)
+      const [rows] = await job.getQueryResults()
+      this.logger.info(`Successfully executed test query, received ${rows.length} row(s)`)
+
+      // Test 3: Try accessing the billing export table
+      this.logger.info('Test 3: Verifying billing export table access...')
+      const billingTableId = configLoader().GCP.BIG_QUERY_TABLE
+      const tableQuery = `SELECT COUNT(*) as count FROM \`${billingTableId}\` LIMIT 1`
+      
+      const [tableJob] = await bigquery.createQueryJob({
+        query: tableQuery,
+        location: awsRegion
+      })
+      
+      this.logger.info(`Billing table query job ${tableJob.id} created, waiting for results...`)
+      const [tableRows] = await tableJob.getQueryResults()
+      this.logger.info('Successfully verified billing export table access')
+
+      this.logger.info('All BigQuery access tests completed successfully')
 
     } catch (error) {
       this.logger.error('BigQuery test failed:', error)
