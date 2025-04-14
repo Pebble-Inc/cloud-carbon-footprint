@@ -251,11 +251,11 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       this.logger.info('Getting WIF configuration...')
       const wifConfig = await this.authService.getWIFConfig(this.wifConfigId)
 
-      // Get region using our working method
-      this.logger.info('Getting AWS region...')
-      const region = await this.httpGet('/latest/meta-data/placement/availability-zone')
-      const awsRegion = region.slice(0, -1) // Remove availability zone letter
-      this.logger.info(`Using AWS region: ${awsRegion}`)
+      // // Get region using our working method
+      // this.logger.info('Getting AWS region...')
+      // const region = await this.httpGet('/latest/meta-data/placement/availability-zone')
+      // const awsRegion = region.slice(0, -1) // Remove availability zone letter
+      // this.logger.info(`Using AWS region: ${awsRegion}`)
       
       // Use a supported BigQuery region for queries
       const bqRegion = configLoader().GCP.CURRENT_REGIONS[0] // Default BigQuery region
