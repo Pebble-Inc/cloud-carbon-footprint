@@ -7,6 +7,7 @@ import { fromNodeProviderChain } from '@aws-sdk/credential-providers'
 import { GoogleAuthClient, Logger } from '@cloud-carbon-footprint/common'
 import { GoogleAuth } from 'google-auth-library'
 import GCPWIFConfigService from './GCPWIFConfigService'
+import { IGCPWIFConfig } from './IGCPWIFConfig'
 
 export default class FalconGCPAuthService {
   private readonly logger: Logger
@@ -26,6 +27,19 @@ export default class FalconGCPAuthService {
       return response.Arn || ''
     } catch (error) {
       this.logger.error('Error getting AWS identity:', error)
+      throw error
+    }
+  }
+
+  async getWIFConfig(wifConfigId: string): Promise<IGCPWIFConfig> {
+    try {
+      const wifConfig = await this.wifConfigService.getConfig(wifConfigId)
+      if (!wifConfig) {
+        throw new Error(`No WIF configuration found for ID: ${wifConfigId}`)
+      }
+      return wifConfig;
+    } catch (error) {
+      this.logger.error('Error getting WIF configuration:', error)
       throw error
     }
   }

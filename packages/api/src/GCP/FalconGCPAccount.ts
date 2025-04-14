@@ -246,31 +246,38 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       await this.testAWSMetadataAccess()
       
       this.logger.info('Testing BigQuery access...')
-      const authClient = await this.getWrappedAuthClient()
-      const bigquery = new BigQuery({ 
+      
+      // Get WIF configuration
+      this.logger.info('Getting WIF configuration...')
+      const wifConfig = await this.authService.getWIFConfig(this.wifConfigId)
+      
+      // Try direct initialization with external account config
+      this.logger.info('Testing BigQuery with external account configuration...')
+      const bigqueryDirect = new BigQuery({ 
         projectId: this.id,
-        authClient,
+        credentials: wifConfig.config  // Use the config property which contains the actual configuration
       })
 
-      // Test dataset listing
-      this.logger.info('Testing dataset listing...')
-      const [datasets] = await bigquery.getDatasets()
-      this.logger.info(`Successfully listed ${datasets.length} datasets`)
-
-      // Test simple query
-      this.logger.info('Testing simple query execution...')
-      const tableName = configLoader().GCP.BIG_QUERY_TABLE
-      const query = `SELECT COUNT(*) as count FROM \`${tableName}\` LIMIT 1`
-      
-      this.logger.info('Creating query job...')
-      const [job] = await bigquery.createQueryJob({
-        query,
-        location: 'US'
-      })
-      
-      this.logger.info('Getting query results...')
-      const [rows] = await job.getQueryResults()
-      this.logger.info(`Query successful. Row count: ${rows[0].count}`)
+      // Test dataset listing with direct config
+      this.logger.info('Testing dataset listing with external account config...')
+      try {
+        const [datasets] = await bigqueryDirect.getDatasets()
+        this.logger.info(`Successfully listed ${datasets.length} datasets using external account config`)
+        return
+      } catch (error) {
+        this.logger.error('Failed to list datasets with external account config:', error)
+        
+        // Fallback to original auth client approach
+        this.logger.info('Falling back to auth client approach...')
+        const authClient = await this.getWrappedAuthClient()
+        const bigquery = new BigQuery({ 
+          projectId: this.id,
+          authClient,
+        })
+        
+        const [datasets] = await bigquery.getDatasets()
+        this.logger.info(`Successfully listed ${datasets.length} datasets using auth client`)
+      }
 
     } catch (error) {
       this.logger.error('BigQuery test failed:', error)
