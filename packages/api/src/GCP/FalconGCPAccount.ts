@@ -2,44 +2,39 @@
  * © 2021 Thoughtworks, Inc.
  */
 
-import { v3 } from '@google-cloud/monitoring'
-import { ClientOptions } from 'google-gax'
-import { BigQuery } from '@google-cloud/bigquery'
-import { ProjectsClient } from '@google-cloud/resource-manager'
-import { RecommenderClient } from '@google-cloud/recommender'
-import {
-  InstancesClient,
-  DisksClient,
-  AddressesClient,
-  ImagesClient,
-  MachineTypesClient,
-} from '@google-cloud/compute'
-import { GoogleAuthClient, LookupTableOutput, LookupTableInput, Logger } from '@cloud-carbon-footprint/common'
-import {
-  ICloudService,
-  Region,
-  ComputeEstimator,
-  StorageEstimator,
-  NetworkingEstimator,
-  MemoryEstimator,
-  UnknownEstimator,
-  CloudProviderAccount,
-  EmbodiedEmissionsEstimator,
-} from '@cloud-carbon-footprint/core'
 import {
   configLoader,
-  EstimationResult,
-  RecommendationResult,
-  GroupBy,
+  EstimationResult, GoogleAuthClient, GroupBy, Logger, LookupTableInput, LookupTableOutput, RecommendationResult
 } from '@cloud-carbon-footprint/common'
-import { BillingExportTable, ComputeEngine } from '@cloud-carbon-footprint/gcp'
-import { GCP_CLOUD_CONSTANTS, getGCPEmissionsFactors } from '@cloud-carbon-footprint/gcp'
-import { ServiceWrapper } from './lib/ServiceWrapper'
-import { Recommendations } from './lib/Recommendations'
+import {
+  CloudProviderAccount,
+  ComputeEstimator,
+  EmbodiedEmissionsEstimator,
+  ICloudService,
+  MemoryEstimator,
+  NetworkingEstimator,
+  Region,
+  StorageEstimator,
+  UnknownEstimator,
+} from '@cloud-carbon-footprint/core'
+import { BillingExportTable, ComputeEngine, GCP_CLOUD_CONSTANTS, getGCPEmissionsFactors } from '@cloud-carbon-footprint/gcp'
+import { BigQuery } from '@google-cloud/bigquery'
+import {
+  AddressesClient,
+  DisksClient,
+  ImagesClient,
+  InstancesClient,
+  MachineTypesClient,
+} from '@google-cloud/compute'
+import { v3 } from '@google-cloud/monitoring'
+import { RecommenderClient } from '@google-cloud/recommender'
+import { ProjectsClient } from '@google-cloud/resource-manager'
+import { ClientOptions } from 'google-gax'
+import http from 'http'
 import FalconGCPAuthService from './FalconGCPAuthService'
 import { AuthClientWrapper } from './lib/AuthClientWrapper'
-import axios from 'axios'
-import http from 'http'
+import { Recommendations } from './lib/Recommendations'
+import { ServiceWrapper } from './lib/ServiceWrapper'
 
 export default class FalconGCPAccount extends CloudProviderAccount {
   private googleAuthClient: GoogleAuthClient | null = null
@@ -58,6 +53,7 @@ export default class FalconGCPAccount extends CloudProviderAccount {
   }
 
   private async getIMDSv2Token(): Promise<string> {
+    this.logger.info('Getting IMDSv2 token...')
     return new Promise((resolve, reject) => {
       const request = http.request({
         hostname: '169.254.169.254',
@@ -69,19 +65,29 @@ export default class FalconGCPAccount extends CloudProviderAccount {
         }
       }, (response) => {
         if (response.statusCode !== 200) {
-          reject(new Error(`Token request failed with status: ${response.statusCode}`))
+          const error = new Error(`Token request failed with status: ${response.statusCode}`)
+          this.logger.error('Token request failed', error)
+          reject(error)
           return
         }
 
         let data = ''
         response.on('data', (chunk) => data += chunk)
-        response.on('end', () => resolve(data))
+        response.on('end', () => {
+          this.logger.info('Successfully obtained IMDSv2 token')
+          resolve(data)
+        })
       })
 
-      request.on('error', reject)
+      request.on('error', (error) => {
+        this.logger.error('Error getting IMDSv2 token', error)
+        reject(error)
+      })
       request.on('timeout', () => {
+        const error = new Error('Token request timed out')
+        this.logger.error('IMDSv2 token request timed out', error)
         request.destroy()
-        reject(new Error('Token request timed out'))
+        reject(error)
       })
 
       request.end()
@@ -89,8 +95,8 @@ export default class FalconGCPAccount extends CloudProviderAccount {
   }
 
   private async httpGet(path: string): Promise<string> {
+    this.logger.info(`Making HTTP GET request to ${path}`)
     try {
-      // Get IMDSv2 token first
       const token = await this.getIMDSv2Token()
       
       return new Promise((resolve, reject) => {
@@ -103,23 +109,33 @@ export default class FalconGCPAccount extends CloudProviderAccount {
           }
         }, (response) => {
           if (response.statusCode !== 200) {
-            reject(new Error(`Request failed with status: ${response.statusCode}`))
+            const error = new Error(`Request failed with status: ${response.statusCode}`)
+            this.logger.error('Request failed', error)
+            reject(error)
             return
           }
 
           let data = ''
           response.on('data', (chunk) => data += chunk)
-          response.on('end', () => resolve(data))
+          response.on('end', () => {
+            this.logger.info(`Successfully retrieved data from ${path}`)
+            resolve(data)
+          })
         })
 
-        request.on('error', reject)
+        request.on('error', (error) => {
+          this.logger.error(`Error in httpGet for path ${path}`, error)
+          reject(error)
+        })
         request.on('timeout', () => {
+          const error = new Error('Request timed out')
+          this.logger.error(`Request timed out for path ${path}`, error)
           request.destroy()
-          reject(new Error('Request timed out'))
+          reject(error)
         })
       })
     } catch (error) {
-      this.logger.error(`Error in httpGet for path ${path}:`, error)
+      this.logger.error(`Error in httpGet for path ${path}`, error)
       throw error
     }
   }
@@ -155,15 +171,24 @@ export default class FalconGCPAccount extends CloudProviderAccount {
   }
 
   private async getAuthClient(): Promise<GoogleAuthClient> {
+    this.logger.info('Getting auth client...')
     if (!this.googleAuthClient) {
-      this.googleAuthClient = await this.authService.getAuthenticatedClient(this.wifConfigId)
+      this.logger.info('No existing auth client, creating new one...')
+      const auth = await this.authService.getAuthenticatedClient(this.wifConfigId)
+      this.logger.info('Successfully obtained authenticated client')
+      this.googleAuthClient = auth
+    } else {
+      this.logger.info('Using existing auth client')
     }
     return this.googleAuthClient
   }
 
   private async getWrappedAuthClient(): Promise<AuthClientWrapper> {
+    this.logger.info('Getting wrapped auth client...')
     const authClient = await this.getAuthClient()
-    return new AuthClientWrapper(authClient)
+    const wrappedClient = new AuthClientWrapper(authClient)
+    this.logger.info('Successfully created wrapped auth client')
+    return wrappedClient
   }
 
   async getDataForRegions(
@@ -171,13 +196,17 @@ export default class FalconGCPAccount extends CloudProviderAccount {
     endDate: Date,
     grouping: GroupBy,
   ): Promise<EstimationResult[]> {
+    this.logger.info('Getting data for regions...')
     const authClient = await this.getWrappedAuthClient()
     const options: ClientOptions = {
       projectId: this.id,
       authClient,
     }
+    this.logger.info(`Using project ID: ${this.id}`)
+    
     const estimationResults = await Promise.all(
       this.regions.map(async (regionId) => {
+        this.logger.info(`Processing region: ${regionId}`)
         return await this.getDataForRegion(
           regionId,
           startDate,
@@ -186,6 +215,7 @@ export default class FalconGCPAccount extends CloudProviderAccount {
         )
       }),
     )
+    this.logger.info(`Completed processing ${estimationResults.length} regions`)
     return estimationResults.flat()
   }
 

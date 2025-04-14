@@ -7,22 +7,22 @@ import mongoose, { Schema } from 'mongoose'
 export interface IGCPWIFConfig {
   wifConfigId: string
   tenantId: string
-  createdAt: Date
-  updatedAt: Date
   config: {
-    universe_domain: string
-    type: string
+    type: 'external_account'
     audience: string
     subject_token_type: string
-    service_account_impersonation_url: string
     token_url: string
+    service_account_impersonation_url: string
     credential_source: {
       environment_id: string
       region_url: string
       url: string
       regional_cred_verification_url: string
     }
+    universe_domain: string
   }
+  createdAt: Date
+  updatedAt: Date
 }
 
 const gcpWIFConfigSchema = new Schema(

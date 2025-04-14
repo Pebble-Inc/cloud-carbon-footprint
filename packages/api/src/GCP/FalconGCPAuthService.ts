@@ -2,52 +2,55 @@
  * © 2024 Thoughtworks, Inc.
  */
 
+import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts'
+import { fromNodeProviderChain } from '@aws-sdk/credential-providers'
+import { GoogleAuthClient, Logger } from '@cloud-carbon-footprint/common'
 import { GoogleAuth } from 'google-auth-library'
-import { GoogleAuthClient } from '@cloud-carbon-footprint/common'
-import { Logger } from '@cloud-carbon-footprint/common'
 import GCPWIFConfigService from './GCPWIFConfigService'
-import { IGCPWIFConfig } from './IGCPWIFConfig'
 
 export default class FalconGCPAuthService {
   private readonly logger: Logger
-  private readonly gcpWIFConfigService: GCPWIFConfigService
+  private readonly wifConfigService: GCPWIFConfigService
 
   constructor() {
     this.logger = new Logger('FalconGCPAuthService')
-    this.gcpWIFConfigService = new GCPWIFConfigService()
+    this.wifConfigService = new GCPWIFConfigService()
   }
 
-  async getAuthenticatedClient(configId: string): Promise<GoogleAuthClient> {
+  private async getAWSIdentity(): Promise<string> {
     try {
-      const config = await this.gcpWIFConfigService.getConfig(configId)
-      if (!config) {
-        throw new Error(`No GCP WIF configuration found for configId: ${configId}`)
-      }
-
-      const auth = new GoogleAuth({
-        credentials: config.config,
-        scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-      })
-
-      return await auth.getClient()
+      const credentials = await fromNodeProviderChain()()
+      const stsClient = new STSClient({ credentials })
+      const command = new GetCallerIdentityCommand({})
+      const response = await stsClient.send(command)
+      return response.Arn || ''
     } catch (error) {
-      this.logger.error('Error getting authenticated client:', error)
+      this.logger.error('Error getting AWS identity:', error)
       throw error
     }
   }
 
-  async getAuthenticatedClientForTenant(tenantId: string): Promise<GoogleAuthClient> {
+  async getAuthenticatedClient(wifConfigId: string): Promise<GoogleAuthClient> {
     try {
-      const configs = await this.gcpWIFConfigService.getConfigsByTenantId(tenantId)
-      if (!configs || configs.length === 0) {
-        throw new Error(`No GCP WIF configurations found for tenant: ${tenantId}`)
+      const wifConfig = await this.wifConfigService.getConfig(wifConfigId)
+      if (!wifConfig) {
+        throw new Error(`No WIF configuration found for ID: ${wifConfigId}`)
       }
 
-      // For now, we'll use the first config. In the future, we might want to handle multiple configs
-      const config = configs[0]
-      return this.getAuthenticatedClient(config.wifConfigId)
+      // Verify AWS identity
+      const awsIdentity = await this.getAWSIdentity()
+      this.logger.info(`Authenticating with AWS identity: ${awsIdentity}`)
+
+      // Initialize GoogleAuth with WIF config
+      const auth = new GoogleAuth({
+        credentials: wifConfig.config,
+        scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+      })
+      const googleAuthClient: GoogleAuthClient = await auth.getClient()
+
+      return googleAuthClient;
     } catch (error) {
-      this.logger.error('Error getting authenticated client for tenant:', error)
+      this.logger.error('Error getting authenticated client:', error)
       throw error
     }
   }
