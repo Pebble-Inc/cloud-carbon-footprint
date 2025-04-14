@@ -257,11 +257,15 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       const awsRegion = region.slice(0, -1) // Remove availability zone letter
       this.logger.info(`Using AWS region: ${awsRegion}`)
       
+      // Use a supported BigQuery region for queries
+      const bqRegion = configLoader().GCP.CURRENT_REGIONS[0] // Default BigQuery region
+      this.logger.info(`Using BigQuery region: ${bqRegion}`)
+      
       // Initialize BigQuery with external account config
       this.logger.info('Initializing BigQuery with external account configuration...')
       const bigquery = new BigQuery({ 
         projectId: this.id,
-        location: awsRegion,
+        location: bqRegion, // Use BigQuery region for operations
         credentials: {
           ...wifConfig.config,
           credential_source: {
@@ -281,7 +285,7 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       const query = 'SELECT 1 as test_column'
       const [job] = await bigquery.createQueryJob({
         query,
-        location: awsRegion // Ensure query runs in the same location
+        location: bqRegion // Use BigQuery region for query
       })
       
       this.logger.info(`Query job ${job.id} created, waiting for results...`)
@@ -295,7 +299,7 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       
       const [tableJob] = await bigquery.createQueryJob({
         query: tableQuery,
-        location: awsRegion
+        location: bqRegion // Use BigQuery region for query
       })
       
       this.logger.info(`Billing table query job ${tableJob.id} created, waiting for results...`)
