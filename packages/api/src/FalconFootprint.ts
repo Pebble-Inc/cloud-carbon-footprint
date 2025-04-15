@@ -12,7 +12,7 @@ import {
 import {
   createValidRecommendationsRequest,
   FootprintEstimatesRawRequest,
-  Tags
+  Tags,
 } from '@cloud-carbon-footprint/app'
 import { Logger } from '@cloud-carbon-footprint/common'
 import { createValidFootprintRequest } from '@cloud-carbon-footprint/app'
@@ -28,18 +28,18 @@ import { ITenantConfig } from './ITenantConfig'
 import FalconGCPAccount from './GCP/FalconGCPAccount'
 import { AccountDetails } from '@cloud-carbon-footprint/common'
 interface EstimationRequest {
-  startDate: Date;
-  endDate: Date;
-  cloudProviderToSeed?: string;
-  ignoreCache: boolean;
-  groupBy?: string;
-  limit?: number;
-  skip?: number;
-  cloudProviders?: string[];
-  accounts?: string[];
-  services?: string[];
-  regions?: string[];
-  tags?: Tags;
+  startDate: Date
+  endDate: Date
+  cloudProviderToSeed?: string
+  ignoreCache: boolean
+  groupBy?: string
+  limit?: number
+  skip?: number
+  cloudProviders?: string[]
+  accounts?: string[]
+  services?: string[]
+  regions?: string[]
+  tags?: Tags
 }
 
 export interface FootprintV2EstimatesRawRequest {
@@ -128,16 +128,14 @@ export class FalconFootprint {
         const newConfig = mergeConfig(config.configDoc)
         setConfig(newConfig)
 
-      
-          const estimationRequest = createValidFootprintRequest({
-            ...rest,
-          })
-          const results = await (this.isGCPConfig(config) ? this.getGCPData(config, estimationRequest) : footprintApp.getCostAndEstimates(
-            estimationRequest,
-          ))
-          const filteredResults = this.applyFilters(results, rawRequest)
-          estimationResults.push(...filteredResults)
-        
+        const estimationRequest = createValidFootprintRequest({
+          ...rest,
+        })
+        const results = await (this.isGCPConfig(config)
+          ? this.getGCPData(config, estimationRequest)
+          : footprintApp.getCostAndEstimates(estimationRequest))
+        const filteredResults = this.applyFilters(results, rawRequest)
+        estimationResults.push(...filteredResults)
       } catch (e) {
         this.logger.error(`Error processing config ${config.configId}:`, e)
         if (e instanceof EstimationRequestValidationError) {
@@ -269,12 +267,22 @@ export class FalconFootprint {
     return recommendationsResults
   }
 
-  private async getGCPData(config: ITenantConfig, request: EstimationRequest): Promise<EstimationResult[]> {
-    const {GCP} = config.configDoc;
-    const gcpResults:EstimationResult[] = []
+  private async getGCPData(
+    config: ITenantConfig,
+    request: EstimationRequest,
+  ): Promise<EstimationResult[]> {
+    const { GCP } = config.configDoc
+    const gcpResults: EstimationResult[] = []
 
-    const { startDate, endDate } = request;
+    const { startDate, endDate } = request
     const grouping = request.groupBy as GroupBy
+
+    if (!GCP?.BILLING_PROJECT_ID) {
+      this.logger.info(
+        'No GCP Billing Project ID found, skipping GCP Estimates',
+      )
+      return []
+    }
 
     if (GCP?.INCLUDE_ESTIMATES) {
       this.logger.info('Starting GCP Estimations')
@@ -303,7 +311,7 @@ export class FalconFootprint {
       }
       this.logger.info('Finished GCP Estimations')
     }
-   return gcpResults;
+    return gcpResults
   }
 
   private isGCPConfig(config: ITenantConfig): boolean {
