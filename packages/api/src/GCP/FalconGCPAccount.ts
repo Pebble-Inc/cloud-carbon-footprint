@@ -251,21 +251,15 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       this.logger.info('Getting WIF configuration...')
       const wifConfig = await this.authService.getWIFConfig(this.wifConfigId)
 
-      // // Get region using our working method
-      // this.logger.info('Getting AWS region...')
-      // const region = await this.httpGet('/latest/meta-data/placement/availability-zone')
-      // const awsRegion = region.slice(0, -1) // Remove availability zone letter
-      // this.logger.info(`Using AWS region: ${awsRegion}`)
-      
       // Use a supported BigQuery region for queries
-      const bqRegion = configLoader().GCP.CURRENT_REGIONS[0] // Default BigQuery region
+      const bqRegion = 'US' // Multi-region location
       this.logger.info(`Using BigQuery region: ${bqRegion}`)
       
       // Initialize BigQuery with external account config
       this.logger.info('Initializing BigQuery with external account configuration...')
       const bigquery = new BigQuery({ 
         projectId: this.id,
-        location: bqRegion, // Use BigQuery region for operations
+        location: bqRegion, // Use multi-region location
         credentials: {
           ...wifConfig.config,
           credential_source: {
@@ -285,7 +279,7 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       const query = 'SELECT 1 as test_column'
       const [job] = await bigquery.createQueryJob({
         query,
-        location: bqRegion // Use BigQuery region for query
+        location: bqRegion // Use multi-region location
       })
       
       this.logger.info(`Query job ${job.id} created, waiting for results...`)
@@ -299,12 +293,12 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       
       const [tableJob] = await bigquery.createQueryJob({
         query: tableQuery,
-        location: bqRegion // Use BigQuery region for query
+        location: bqRegion // Use multi-region location
       })
       
       this.logger.info(`Billing table query job ${tableJob.id} created, waiting for results...`)
       const [tableRows] = await tableJob.getQueryResults()
-      this.logger.info('Successfully verified billing export table access')
+      this.logger.info(`Successfully verified billing export table access, found ${tableRows[0].count} rows`)
 
       this.logger.info('All BigQuery access tests completed successfully')
 
