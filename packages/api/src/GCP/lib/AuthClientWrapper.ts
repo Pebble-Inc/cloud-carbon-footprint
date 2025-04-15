@@ -161,7 +161,7 @@ export class AuthClientWrapper extends JWT {
     }
   }
 
-  async getRequestMetadata(url?: string): Promise<Record<string, string>> {
+  async getRequestMetadata(): Promise<Record<string, string>> {
     return this.getRequestHeaders()
   }
 }
