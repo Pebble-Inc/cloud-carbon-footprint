@@ -75,9 +75,11 @@
   },
   "dependencies": {
     "@aws-sdk/client-iam": "^3.758.0",
-    "@aws-sdk/credential-providers": "^3.758.0",
+    "@aws-sdk/client-sts": "^3.0.0",
+    "@aws-sdk/credential-providers": "^3.0.0",
     "@cloud-carbon-footprint/app": "^1.8.0",
     "@cloud-carbon-footprint/common": "^1.15.0",
+    "@cloud-carbon-footprint/gcp": "^0.15.0",
     "@types/express": "^4.17.12",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

@@ -14,7 +14,7 @@ export interface ITenantConfig {
   updatedAt: Date
   configDoc: {
     AWS?: CCFConfig['AWS']
-    GCP?: CCFConfig['GCP']
+    GCP?: CCFConfig['GCP'] & { WIF_CONFIG_ID?: string }
     AZURE?: CCFConfig['AZURE']
     ALI?: CCFConfig['ALI']
     LOGGING_MODE?: string
@@ -125,6 +125,7 @@ const tenantConfigSchema = new Schema(
           BILLING_PROJECT_NAME: { type: String, default: '' },
           CACHE_BUCKET_NAME: { type: String, default: '' },
           RESOURCE_TAG_NAMES: { type: [String], default: [] },
+          WIF_CONFIG_ID: { type: String, default: '' },
         },
         required: false,
       },
