@@ -4,7 +4,13 @@
 
 import {
   configLoader,
-  EstimationResult, GoogleAuthClient, GroupBy, Logger, LookupTableInput, LookupTableOutput, RecommendationResult
+  EstimationResult,
+  GoogleAuthClient,
+  GroupBy,
+  Logger,
+  LookupTableInput,
+  LookupTableOutput,
+  RecommendationResult,
 } from '@cloud-carbon-footprint/common'
 import {
   CloudProviderAccount,
@@ -17,7 +23,12 @@ import {
   StorageEstimator,
   UnknownEstimator,
 } from '@cloud-carbon-footprint/core'
-import { BillingExportTable, ComputeEngine, GCP_CLOUD_CONSTANTS, getGCPEmissionsFactors } from '@cloud-carbon-footprint/gcp'
+import {
+  BillingExportTable,
+  ComputeEngine,
+  GCP_CLOUD_CONSTANTS,
+  getGCPEmissionsFactors,
+} from '@cloud-carbon-footprint/gcp'
 import { BigQuery } from '@google-cloud/bigquery'
 import {
   AddressesClient,
@@ -55,29 +66,34 @@ export default class FalconGCPAccount extends CloudProviderAccount {
   private async getIMDSv2Token(): Promise<string> {
     this.logger.info('Getting IMDSv2 token...')
     return new Promise((resolve, reject) => {
-      const request = http.request({
-        hostname: '169.254.169.254',
-        path: '/latest/api/token',
-        method: 'PUT',
-        timeout: 5000,
-        headers: {
-          'X-aws-ec2-metadata-token-ttl-seconds': '21600'
-        }
-      }, (response) => {
-        if (response.statusCode !== 200) {
-          const error = new Error(`Token request failed with status: ${response.statusCode}`)
-          this.logger.error('Token request failed', error)
-          reject(error)
-          return
-        }
+      const request = http.request(
+        {
+          hostname: '169.254.169.254',
+          path: '/latest/api/token',
+          method: 'PUT',
+          timeout: 5000,
+          headers: {
+            'X-aws-ec2-metadata-token-ttl-seconds': '21600',
+          },
+        },
+        (response) => {
+          if (response.statusCode !== 200) {
+            const error = new Error(
+              `Token request failed with status: ${response.statusCode}`,
+            )
+            this.logger.error('Token request failed', error)
+            reject(error)
+            return
+          }
 
-        let data = ''
-        response.on('data', (chunk) => data += chunk)
-        response.on('end', () => {
-          this.logger.info('Successfully obtained IMDSv2 token')
-          resolve(data)
-        })
-      })
+          let data = ''
+          response.on('data', (chunk) => (data += chunk))
+          response.on('end', () => {
+            this.logger.info('Successfully obtained IMDSv2 token')
+            resolve(data)
+          })
+        },
+      )
 
       request.on('error', (error) => {
         this.logger.error('Error getting IMDSv2 token', error)
@@ -98,30 +114,35 @@ export default class FalconGCPAccount extends CloudProviderAccount {
     this.logger.info(`Making HTTP GET request to ${path}`)
     try {
       const token = await this.getIMDSv2Token()
-      
-      return new Promise((resolve, reject) => {
-        const request = http.get({
-          hostname: '169.254.169.254',
-          path: path,
-          timeout: 5000,
-          headers: {
-            'X-aws-ec2-metadata-token': token
-          }
-        }, (response) => {
-          if (response.statusCode !== 200) {
-            const error = new Error(`Request failed with status: ${response.statusCode}`)
-            this.logger.error('Request failed', error)
-            reject(error)
-            return
-          }
 
-          let data = ''
-          response.on('data', (chunk) => data += chunk)
-          response.on('end', () => {
-            this.logger.info(`Successfully retrieved data from ${path}`)
-            resolve(data)
-          })
-        })
+      return new Promise((resolve, reject) => {
+        const request = http.get(
+          {
+            hostname: '169.254.169.254',
+            path: path,
+            timeout: 5000,
+            headers: {
+              'X-aws-ec2-metadata-token': token,
+            },
+          },
+          (response) => {
+            if (response.statusCode !== 200) {
+              const error = new Error(
+                `Request failed with status: ${response.statusCode}`,
+              )
+              this.logger.error('Request failed', error)
+              reject(error)
+              return
+            }
+
+            let data = ''
+            response.on('data', (chunk) => (data += chunk))
+            response.on('end', () => {
+              this.logger.info(`Successfully retrieved data from ${path}`)
+              resolve(data)
+            })
+          },
+        )
 
         request.on('error', (error) => {
           this.logger.error(`Error in httpGet for path ${path}`, error)
@@ -143,29 +164,39 @@ export default class FalconGCPAccount extends CloudProviderAccount {
   private async testAWSMetadataAccess(): Promise<void> {
     try {
       this.logger.info('Testing AWS metadata service access...')
-      
+
       // Test IMDSv2 token first
       this.logger.info('Getting IMDSv2 token...')
       await this.getIMDSv2Token()
       this.logger.info('Successfully obtained IMDSv2 token')
-      
+
       // Test region access
       this.logger.info('Testing region endpoint...')
-      const region = await this.httpGet('/latest/meta-data/placement/availability-zone')
+      const region = await this.httpGet(
+        '/latest/meta-data/placement/availability-zone',
+      )
       this.logger.info(`Successfully accessed region: ${region}`)
-      
+
       // Test credentials access
       this.logger.info('Testing credentials endpoint...')
-      const roleName = await this.httpGet('/latest/meta-data/iam/security-credentials')
-      this.logger.info(`Successfully accessed credentials path, found role: ${roleName}`)
-      
+      const roleName = await this.httpGet(
+        '/latest/meta-data/iam/security-credentials',
+      )
+      this.logger.info(
+        `Successfully accessed credentials path, found role: ${roleName}`,
+      )
+
       // Test specific role credentials
       this.logger.info(`Testing role credentials for: ${roleName}`)
-      const credentials = await this.httpGet(`/latest/meta-data/iam/security-credentials/${roleName}`)
+      const credentials = await this.httpGet(
+        `/latest/meta-data/iam/security-credentials/${roleName}`,
+      )
       this.logger.info('Successfully accessed role credentials')
-      
     } catch (error) {
-      this.logger.error(`AWS metadata service test failed: ${error.message}`, error)
+      this.logger.error(
+        `AWS metadata service test failed: ${error.message}`,
+        error,
+      )
       throw new Error(`AWS metadata service access failed: ${error.message}`)
     }
   }
@@ -174,7 +205,9 @@ export default class FalconGCPAccount extends CloudProviderAccount {
     this.logger.info('Getting auth client...')
     if (!this.googleAuthClient) {
       this.logger.info('No existing auth client, creating new one...')
-      const auth = await this.authService.getAuthenticatedClient(this.wifConfigId)
+      const auth = await this.authService.getAuthenticatedClient(
+        this.wifConfigId,
+      )
       this.logger.info('Successfully obtained authenticated client')
       this.googleAuthClient = auth
     } else {
@@ -197,13 +230,8 @@ export default class FalconGCPAccount extends CloudProviderAccount {
     grouping: GroupBy,
   ): Promise<EstimationResult[]> {
     this.logger.info('Getting data for regions...')
-    const authClient = await this.getWrappedAuthClient()
-    const options: ClientOptions = {
-      projectId: this.id,
-      authClient,
-    }
     this.logger.info(`Using project ID: ${this.id}`)
-    
+
     const estimationResults = await Promise.all(
       this.regions.map(async (regionId) => {
         this.logger.info(`Processing region: ${regionId}`)
@@ -244,9 +272,9 @@ export default class FalconGCPAccount extends CloudProviderAccount {
     try {
       // First test AWS metadata access
       await this.testAWSMetadataAccess()
-      
+
       this.logger.info('Testing BigQuery access...')
-      
+
       // Get WIF configuration
       this.logger.info('Getting WIF configuration...')
       const wifConfig = await this.authService.getWIFConfig(this.wifConfigId)
@@ -254,19 +282,21 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       // Use a supported BigQuery region for queries
       const bqRegion = 'US' // Multi-region location
       this.logger.info(`Using BigQuery region: ${bqRegion}`)
-      
+
       // Initialize BigQuery with external account config
-      this.logger.info('Initializing BigQuery with external account configuration...')
-      const bigquery = new BigQuery({ 
+      this.logger.info(
+        'Initializing BigQuery with external account configuration...',
+      )
+      const bigquery = new BigQuery({
         projectId: this.id,
         location: bqRegion, // Use multi-region location
         credentials: {
           ...wifConfig.config,
           credential_source: {
             ...wifConfig.config.credential_source,
-            imdsv2_session_token_url: 'http://169.254.169.254/latest/api/token'
-          }
-        }
+            imdsv2_session_token_url: 'http://169.254.169.254/latest/api/token',
+          },
+        },
       })
 
       // Test 1: List datasets
@@ -279,29 +309,34 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       const query = 'SELECT 1 as test_column'
       const [job] = await bigquery.createQueryJob({
         query,
-        location: bqRegion // Use multi-region location
+        location: bqRegion, // Use multi-region location
       })
-      
+
       this.logger.info(`Query job ${job.id} created, waiting for results...`)
       const [rows] = await job.getQueryResults()
-      this.logger.info(`Successfully executed test query, received ${rows.length} row(s)`)
+      this.logger.info(
+        `Successfully executed test query, received ${rows.length} row(s)`,
+      )
 
       // Test 3: Try accessing the billing export table
       this.logger.info('Test 3: Verifying billing export table access...')
       const billingTableId = configLoader().GCP.BIG_QUERY_TABLE
       const tableQuery = `SELECT COUNT(*) as count FROM \`${billingTableId}\` LIMIT 1`
-      
+
       const [tableJob] = await bigquery.createQueryJob({
         query: tableQuery,
-        location: bqRegion // Use multi-region location
+        location: bqRegion, // Use multi-region location
       })
-      
-      this.logger.info(`Billing table query job ${tableJob.id} created, waiting for results...`)
+
+      this.logger.info(
+        `Billing table query job ${tableJob.id} created, waiting for results...`,
+      )
       const [tableRows] = await tableJob.getQueryResults()
-      this.logger.info(`Successfully verified billing export table access, found ${tableRows[0].count} rows`)
+      this.logger.info(
+        `Successfully verified billing export table access, found ${tableRows[0].count} rows`,
+      )
 
       this.logger.info('All BigQuery access tests completed successfully')
-
     } catch (error) {
       this.logger.error('BigQuery test failed:', error)
       if (error.response?.data) {
@@ -319,14 +354,14 @@ export default class FalconGCPAccount extends CloudProviderAccount {
     try {
       // Run test before actual query
       await this.testBigQueryAccess()
-      
+
       this.logger.info('Proceeding with main billing data query...')
-      const authClient = await this.getWrappedAuthClient()
-      const bigquery = new BigQuery({ 
-        projectId: this.id,
-        authClient,
-      })
-      
+
+      // Get BigQuery client from auth service
+      const bigquery = await this.authService.getBigQueryClient(
+        this.wifConfigId,
+      )
+
       const billingExportTableService = new BillingExportTable(
         new ComputeEstimator(),
         new StorageEstimator(GCP_CLOUD_CONSTANTS.SSDCOEFFICIENT),
@@ -339,7 +374,7 @@ export default class FalconGCPAccount extends CloudProviderAccount {
         ),
         bigquery,
       )
-      
+
       return await billingExportTableService.getEstimates(
         startDate,
         endDate,
@@ -403,7 +438,9 @@ export default class FalconGCPAccount extends CloudProviderAccount {
       throw new Error('Unsupported service: ' + key)
     const options: ClientOptions = {
       projectId: this.id,
-      authClient: this.googleAuthClient ? new AuthClientWrapper(this.googleAuthClient) : undefined,
+      authClient: this.googleAuthClient
+        ? new AuthClientWrapper(this.googleAuthClient)
+        : undefined,
     }
     return this.services[key](options)
   }

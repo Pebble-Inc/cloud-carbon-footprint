@@ -29,9 +29,9 @@ export class AuthClientWrapper extends JWT {
         path: '/latest/api/token',
         method: 'PUT',
         headers: {
-          'X-aws-ec2-metadata-token-ttl-seconds': '21600'
+          'X-aws-ec2-metadata-token-ttl-seconds': '21600',
         },
-        timeout: 5000
+        timeout: 5000,
       }
 
       const req = http.request(options, (res) => {
@@ -60,7 +60,7 @@ export class AuthClientWrapper extends JWT {
 
   private async httpGet(path: string): Promise<string> {
     const token = await this.getIMDSv2Token()
-    
+
     return new Promise((resolve, reject) => {
       const options = {
         hostname: '169.254.169.254',
@@ -68,9 +68,9 @@ export class AuthClientWrapper extends JWT {
         path: path,
         method: 'GET',
         headers: {
-          'X-aws-ec2-metadata-token': token
+          'X-aws-ec2-metadata-token': token,
         },
-        timeout: 5000
+        timeout: 5000,
       }
 
       const req = http.request(options, (res) => {
@@ -115,7 +115,9 @@ export class AuthClientWrapper extends JWT {
     }
 
     try {
-      this.awsRoleName = await this.httpGet('/latest/meta-data/iam/security-credentials/')
+      this.awsRoleName = await this.httpGet(
+        '/latest/meta-data/iam/security-credentials/',
+      )
       return this.awsRoleName
     } catch (error) {
       throw new Error(`Failed to get AWS role name: ${error.message}`)
@@ -129,7 +131,9 @@ export class AuthClientWrapper extends JWT {
 
     try {
       const roleName = await this.getAwsRoleName()
-      const credentials = await this.httpGet(`/latest/meta-data/iam/security-credentials/${roleName}`)
+      const credentials = await this.httpGet(
+        `/latest/meta-data/iam/security-credentials/${roleName}`,
+      )
       this.awsCredentials = JSON.parse(credentials)
       return this.awsCredentials
     } catch (error) {
@@ -144,7 +148,7 @@ export class AuthClientWrapper extends JWT {
     return {
       ...gcpHeaders,
       'x-goog-cloud-target-resource': awsCredentials.AccessKeyId,
-      'x-goog-cloud-target-resource-type': 'aws'
+      'x-goog-cloud-target-resource-type': 'aws',
     }
   }
 
@@ -153,11 +157,11 @@ export class AuthClientWrapper extends JWT {
     const token = headers.Authorization?.replace('Bearer ', '') || ''
     return {
       token,
-      res: null
+      res: null,
     }
   }
 
   async getRequestMetadata(url?: string): Promise<Record<string, string>> {
     return this.getRequestHeaders()
   }
-} 
+}

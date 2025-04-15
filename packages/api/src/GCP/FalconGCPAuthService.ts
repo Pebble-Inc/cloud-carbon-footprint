@@ -4,10 +4,15 @@
 
 import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts'
 import { fromNodeProviderChain } from '@aws-sdk/credential-providers'
-import { GoogleAuthClient, Logger } from '@cloud-carbon-footprint/common'
+import {
+  GoogleAuthClient,
+  Logger,
+  configLoader,
+} from '@cloud-carbon-footprint/common'
 import { GoogleAuth } from 'google-auth-library'
 import GCPWIFConfigService from './GCPWIFConfigService'
 import { IGCPWIFConfig } from './IGCPWIFConfig'
+import { BigQuery } from '@google-cloud/bigquery'
 
 export default class FalconGCPAuthService {
   private readonly logger: Logger
@@ -37,7 +42,7 @@ export default class FalconGCPAuthService {
       if (!wifConfig) {
         throw new Error(`No WIF configuration found for ID: ${wifConfigId}`)
       }
-      return wifConfig;
+      return wifConfig
     } catch (error) {
       this.logger.error('Error getting WIF configuration:', error)
       throw error
@@ -62,10 +67,42 @@ export default class FalconGCPAuthService {
       })
       const googleAuthClient: GoogleAuthClient = await auth.getClient()
 
-      return googleAuthClient;
+      return googleAuthClient
     } catch (error) {
       this.logger.error('Error getting authenticated client:', error)
       throw error
     }
   }
-} 
+
+  async getBigQueryClient(wifConfigId: string): Promise<BigQuery> {
+    try {
+      this.logger.info('Getting WIF configuration for BigQuery client...')
+      const wifConfig = await this.wifConfigService.getConfig(wifConfigId)
+      if (!wifConfig) {
+        throw new Error(`No WIF configuration found for ID: ${wifConfigId}`)
+      }
+
+      // Use US multi-region for BigQuery operations
+      const bqRegion = 'US'
+      this.logger.info(`Initializing BigQuery client in region: ${bqRegion}`)
+
+      const bigquery = new BigQuery({
+        projectId: configLoader().GCP.BILLING_PROJECT_ID,
+        location: bqRegion,
+        credentials: {
+          ...wifConfig.config,
+          credential_source: {
+            ...wifConfig.config.credential_source,
+            imdsv2_session_token_url: 'http://169.254.169.254/latest/api/token',
+          },
+        },
+      })
+
+      this.logger.info('Successfully created BigQuery client')
+      return bigquery
+    } catch (error) {
+      this.logger.error('Error creating BigQuery client:', error)
+      throw error
+    }
+  }
+}
