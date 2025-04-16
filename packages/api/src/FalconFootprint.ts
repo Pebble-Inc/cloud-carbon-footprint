@@ -137,6 +137,7 @@ export class FalconFootprint {
         const filteredResults = this.applyFilters(results, rawRequest)
         estimationResults.push(...filteredResults)
       } catch (e) {
+        this.logger.info(`Error processing config ${JSON.stringify(config)}:`)
         this.logger.error(`Error processing config ${config.configId}:`, e)
         if (e instanceof EstimationRequestValidationError) {
           throw new Error(
@@ -283,6 +284,7 @@ export class FalconFootprint {
       )
       return []
     }
+    this.logger.info(`GCP Config: ${JSON.stringify(GCP)}`)
 
     if (GCP?.INCLUDE_ESTIMATES) {
       this.logger.info('Starting GCP Estimations')
