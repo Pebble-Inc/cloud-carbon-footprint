@@ -1,6 +1,7 @@
 import { CCFConfig, configLoader } from '@cloud-carbon-footprint/common'
 import dotenv from 'dotenv'
 dotenv.config()
+
 export const mergeConfig = (ccfConfig: Partial<CCFConfig>) => {
   let _config = configLoader()
   _config = {
