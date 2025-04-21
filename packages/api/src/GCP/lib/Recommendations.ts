@@ -18,19 +18,21 @@ export class Recommendations {
   ) {}
 
   async getRecommendations(): Promise<RecommendationResult[]> {
-    const activeProjectsAndZones = await this.serviceWrapper.getActiveProjectsAndZones()
+    const activeProjectsAndZones =
+      await this.serviceWrapper.getActiveProjectsAndZones()
     const recommendations = []
 
     for (const project of activeProjectsAndZones) {
       const recommenderIds = Object.values(RECOMMENDATION_TYPES)
-      const projectRecommendations = await this.serviceWrapper.getRecommendationsForRecommenderIds(
-        project.id,
-        project.zones[0],
-        recommenderIds,
-      )
+      const projectRecommendations =
+        await this.serviceWrapper.getRecommendationsForRecommenderIds(
+          project.id,
+          project.zones[0],
+          recommenderIds,
+        )
       recommendations.push(...projectRecommendations)
     }
 
     return recommendations
   }
-} 
+}

@@ -12,8 +12,11 @@ import {
 
 import { appendToInlinePolicy } from './utils/iamUtils'
 import { ClientSecretCredential } from '@azure/identity'
-import dotenv from "dotenv";
-dotenv.config();
+import dotenv from 'dotenv'
+import FalconGCPAuthService from './GCP/FalconGCPAuthService'
+
+dotenv.config()
+
 export default class TestConnectionService {
   private readonly serviceLogger: Logger
 
@@ -69,17 +72,25 @@ export default class TestConnectionService {
       try {
         this.serviceLogger.info(`Testing connection for account: ${account.id}`)
         // Ensure inline policy is attached before assuming role
-        this.serviceLogger.info(`aws-account---${account.id},from env   >> ccf-role-----${process.env.CCF_ROLE}, ENV----${process.env.ENV}`);
-        await appendToInlinePolicy(account.id,process.env.ENV,process.env.CCF_ROLE)
-        this.serviceLogger.info(`Inline policy attached for account: ${account.id}`)
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-        const credentialsProvider  = fromTemporaryCredentials({
+        this.serviceLogger.info(
+          `aws-account---${account.id},from env   >> ccf-role-----${process.env.CCF_ROLE}, ENV----${process.env.ENV}`,
+        )
+        await appendToInlinePolicy(
+          account.id,
+          process.env.ENV,
+          process.env.CCF_ROLE,
+        )
+        this.serviceLogger.info(
+          `Inline policy attached for account: ${account.id}`,
+        )
+        await new Promise((resolve) => setTimeout(resolve, 5000))
+        const credentialsProvider = fromTemporaryCredentials({
           clientConfig: { region: 'us-east-1' },
           params: {
             RoleArn: `arn:aws:iam::${account.id}:role/${process.env.CCF_ROLE}`,
             RoleSessionName: `${account.id}-${process.env.CCF_ROLE}`,
           },
-        })        
+        })
         // Test credentials by calling the provider function
         try {
           const credentials = await credentialsProvider()
@@ -106,9 +117,56 @@ export default class TestConnectionService {
     this.serviceLogger.info('AWS connection test completed successfully')
   }
 
-  async testGCPConnection(gcpConfig: CCFConfig['GCP']): Promise<void> {
+  async testGCPConnection(
+    gcpConfig: CCFConfig['GCP'] & { WIF_CONFIG_ID?: string },
+  ): Promise<void> {
     if (!gcpConfig) {
       throw new Error('GCP configuration is required')
+    }
+
+    // Check if the WIF_CONFIG_ID is provided
+    if (!gcpConfig.WIF_CONFIG_ID) {
+      throw new Error(
+        'GCP WIF_CONFIG_ID is required for Workload Identity Federation',
+      )
+    }
+
+    this.serviceLogger.info('Starting GCP Workload Identity Federation test...')
+
+    try {
+      // Create GCP auth service
+      const gcpAuthService = new FalconGCPAuthService()
+
+      // Try to get the WIF config
+      this.serviceLogger.info(
+        `Retrieving WIF configuration for ID: ${gcpConfig.WIF_CONFIG_ID}...`,
+      )
+      await gcpAuthService.getWIFConfig(gcpConfig.WIF_CONFIG_ID)
+      this.serviceLogger.info('Successfully retrieved WIF configuration')
+
+      // Try to get an authenticated client - this internally tests AWS metadata access
+      this.serviceLogger.info('Attempting to get authenticated GCP client...')
+      const authClient = await gcpAuthService.getAuthenticatedClient(
+        gcpConfig.WIF_CONFIG_ID,
+      )
+
+      // Test auth client by getting a token
+      this.serviceLogger.info(
+        'Testing authentication by requesting access token...',
+      )
+      const token = await authClient.getAccessToken()
+
+      if (!token || !token.token) {
+        throw new Error('Failed to obtain GCP access token')
+      }
+
+      this.serviceLogger.info('✅ Successfully obtained GCP access token')
+      this.serviceLogger.info(
+        'GCP Workload Identity Federation test completed successfully',
+      )
+    } catch (error) {
+      this.serviceLogger.error('GCP connection test failed:', error)
+      throw new Error(`Failed to connect to GCP: ${error.message}`)
     }
   }
 

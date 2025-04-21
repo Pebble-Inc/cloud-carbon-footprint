@@ -1,1 +1,1 @@
-export * from './ServiceWrapper';
+export * from './ServiceWrapper'
