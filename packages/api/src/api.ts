@@ -17,6 +17,8 @@ import {
 } from './middleware'
 import Migration from './Migration'
 import GCPWIFConfigService from './GCP/GCPWIFConfigService'
+import TrustRelationshipManager from './AWS/TrustRelationshipManager'
+import { IGCPWIFConfig } from './GCP/IGCPWIFConfig'
 
 export const createRouter = (config?: CCFConfig) => {
   setConfig(config)
@@ -30,6 +32,7 @@ export const createRouter = (config?: CCFConfig) => {
   const gcpWIFConfigService = new GCPWIFConfigService()
   const migrationService = new Migration()
   const tenantDBService = new TenantDBService()
+  const trustRelationshipManager = new TrustRelationshipManager()
 
   /**
    * @openapi
@@ -149,6 +152,89 @@ export const createRouter = (config?: CCFConfig) => {
         res.status(201).json(config)
       } catch (error) {
         res.status(400).json({ error: error.message })
+      }
+    },
+  )
+
+  /**
+   * @openapi
+   * /api/gcp-wif-trust-relationship:
+   *  post:
+   *     tags:
+   *     - GCP WIF Trust Relationship
+   *     summary: Adds or updates a GCP WIF trust relationship in the AWS IAM role
+   *     description: Adds or updates a GCP Workload Identity Federation trust relationship on the AWS IAM role used by the ECS container
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - config
+   *             properties:
+   *               config:
+   *                 type: object
+   *                 required:
+   *                   - universe_domain
+   *                   - type
+   *                   - audience
+   *                   - subject_token_type
+   *                   - token_url
+   *                   - credential_source
+   *                 properties:
+   *                   universe_domain:
+   *                     type: string
+   *                   type:
+   *                     type: string
+   *                   audience:
+   *                     type: string
+   *                     description: The GCP audience value to be used in the trust relationship
+   *                   subject_token_type:
+   *                     type: string
+   *                   token_url:
+   *                     type: string
+   *                   credential_source:
+   *                     type: object
+   *     responses:
+   *       200:
+   *         description: Trust relationship updated successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 message:
+   *                   type: string
+   *       400:
+   *         description: Invalid request body
+   *       500:
+   *         description: Internal server error
+   */
+  router.post(
+    '/gcp-wif-trust-relationship',
+    async (req: express.Request, res: express.Response): Promise<void> => {
+      try {
+        const { config } = req.body as { config: IGCPWIFConfig['config'] }
+
+        if (!config || !config.audience) {
+          throw new Error(
+            'Invalid request body: config with audience is required',
+          )
+        }
+
+        const result =
+          await trustRelationshipManager.addGCPWIFTrustRelationship(config)
+        res.status(200).json(result)
+      } catch (error) {
+        res
+          .status(error.message.includes('Invalid request body') ? 400 : 500)
+          .json({
+            success: false,
+            error: error.message,
+          })
       }
     },
   )
@@ -405,7 +491,9 @@ export const createRouter = (config?: CCFConfig) => {
         if (rest.configDoc?.GCP && wifConfigId) {
           const wifConfig = await gcpWIFConfigService.getConfig(wifConfigId)
           if (!wifConfig) {
-            throw new Error(`WIF configuration not found for ID: ${wifConfigId}`)
+            throw new Error(
+              `WIF configuration not found for ID: ${wifConfigId}`,
+            )
           }
           // Set the WIF config ID in the GCP config
           rest.configDoc.GCP.WIF_CONFIG_ID = wifConfigId

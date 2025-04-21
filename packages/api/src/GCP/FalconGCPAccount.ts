@@ -355,7 +355,7 @@ export default class FalconGCPAccount extends CloudProviderAccount {
   ): Promise<EstimationResult[]> {
     try {
       // Run test before actual query
-     // await this.testBigQueryAccess()
+      // await this.testBigQueryAccess()
 
       this.logger.info('Proceeding with main billing data query...')
 

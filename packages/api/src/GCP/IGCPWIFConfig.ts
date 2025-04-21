@@ -33,10 +33,10 @@ const gcpWIFConfigSchema = new Schema(
       unique: true,
       default: () => generateConfigId(),
     },
-    tenantId: { 
-      type: String, 
+    tenantId: {
+      type: String,
       required: true,
-      index: true 
+      index: true,
     },
     config: {
       universe_domain: { type: String, required: true },
@@ -66,4 +66,4 @@ export const GCPWIFConfig = mongoose.model<GCPWIFConfigDocument>(
 
 const generateConfigId = (): string => {
   return new mongoose.Types.ObjectId().toString()
-} 
+}

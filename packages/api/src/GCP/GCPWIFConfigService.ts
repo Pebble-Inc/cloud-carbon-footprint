@@ -65,7 +65,9 @@ export default class GCPWIFConfigService {
       this.validateWIFConfig(config)
       const gcpWIFConfig = new GCPWIFConfig(config)
       const savedConfig = await gcpWIFConfig.save()
-      this.logger.info(`Created GCP WIF configuration for tenant: ${config.tenantId}`)
+      this.logger.info(
+        `Created GCP WIF configuration for tenant: ${config.tenantId}`,
+      )
       return savedConfig.toObject()
     } catch (error) {
       this.logger.error('Error creating GCP WIF configuration:', error)
@@ -77,7 +79,9 @@ export default class GCPWIFConfigService {
     try {
       const config = await GCPWIFConfig.findOne({ wifConfigId }).lean()
       if (!config) {
-        this.logger.warn(`No GCP WIF configuration found for wifConfigId: ${wifConfigId}`)
+        this.logger.warn(
+          `No GCP WIF configuration found for wifConfigId: ${wifConfigId}`,
+        )
         return null
       }
       return config
@@ -110,7 +114,9 @@ export default class GCPWIFConfigService {
       )
 
       if (updatedConfig) {
-        this.logger.info(`Updated GCP WIF configuration for wifConfigId: ${wifConfigId}`)
+        this.logger.info(
+          `Updated GCP WIF configuration for wifConfigId: ${wifConfigId}`,
+        )
         return updatedConfig
       }
       return null
@@ -126,7 +132,9 @@ export default class GCPWIFConfigService {
       const deleted = result.deletedCount > 0
 
       if (deleted) {
-        this.logger.info(`Deleted GCP WIF configuration for wifConfigId: ${wifConfigId}`)
+        this.logger.info(
+          `Deleted GCP WIF configuration for wifConfigId: ${wifConfigId}`,
+        )
       }
       return deleted
     } catch (error) {
@@ -134,4 +142,4 @@ export default class GCPWIFConfigService {
       throw error
     }
   }
-} 
+}

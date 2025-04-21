@@ -26,13 +26,13 @@ export class GoogleAuthAdapter implements AwsMetadataService {
         path: '/latest/api/token',
         method: 'PUT',
         headers: {
-          'X-aws-ec2-metadata-token-ttl-seconds': '21600'
-        }
+          'X-aws-ec2-metadata-token-ttl-seconds': '21600',
+        },
       }
 
       const req = http.request(options, (res) => {
         let data = ''
-        res.on('data', (chunk) => data += chunk)
+        res.on('data', (chunk) => (data += chunk))
         res.on('end', () => {
           this.imdsv2Token = data
           resolve(data)
@@ -46,19 +46,19 @@ export class GoogleAuthAdapter implements AwsMetadataService {
 
   private async httpGet(path: string): Promise<string> {
     const token = await this.getIMDSv2Token()
-    
+
     return new Promise((resolve, reject) => {
       const options = {
         hostname: '169.254.169.254',
         path: path,
         headers: {
-          'X-aws-ec2-metadata-token': token
-        }
+          'X-aws-ec2-metadata-token': token,
+        },
       }
 
       const req = http.request(options, (res) => {
         let data = ''
-        res.on('data', (chunk) => data += chunk)
+        res.on('data', (chunk) => (data += chunk))
         res.on('end', () => resolve(data))
       })
 
@@ -86,7 +86,9 @@ export class GoogleAuthAdapter implements AwsMetadataService {
     }
 
     try {
-      this.awsRoleName = await this.httpGet('/latest/meta-data/iam/security-credentials/')
+      this.awsRoleName = await this.httpGet(
+        '/latest/meta-data/iam/security-credentials/',
+      )
       return this.awsRoleName
     } catch (error) {
       throw new Error(`Failed to get AWS role name: ${error.message}`)
@@ -100,11 +102,13 @@ export class GoogleAuthAdapter implements AwsMetadataService {
 
     try {
       const roleName = await this.getAwsRoleName()
-      const credentials = await this.httpGet(`/latest/meta-data/iam/security-credentials/${roleName}`)
+      const credentials = await this.httpGet(
+        `/latest/meta-data/iam/security-credentials/${roleName}`,
+      )
       this.awsCredentials = JSON.parse(credentials)
       return this.awsCredentials
     } catch (error) {
       throw new Error(`Failed to get AWS credentials: ${error.message}`)
     }
   }
-} 
+}
