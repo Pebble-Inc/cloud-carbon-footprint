@@ -2,14 +2,18 @@
  * © 2024 Thoughtworks, Inc.
  */
 
-import AWS from 'aws-sdk'
+import {
+  IAMClient,
+  GetRoleCommand,
+  UpdateAssumeRolePolicyCommand,
+} from '@aws-sdk/client-iam'
 import { IGCPWIFConfig } from '../GCP/IGCPWIFConfig'
 
 export class TrustRelationshipManager {
-  private iam: AWS.IAM
+  private iamClient: IAMClient
 
   constructor() {
-    this.iam = new AWS.IAM()
+    this.iamClient = new IAMClient({})
   }
 
   /**
@@ -25,7 +29,8 @@ export class TrustRelationshipManager {
       const roleName = process.env.AWS_ROLE_NAME || 'ecsTaskExecutionRole'
 
       // Get the current role policy
-      const roleData = await this.iam.getRole({ RoleName: roleName }).promise()
+      const getRoleCommand = new GetRoleCommand({ RoleName: roleName })
+      const roleData = await this.iamClient.send(getRoleCommand)
 
       if (!roleData.Role?.AssumeRolePolicyDocument) {
         throw new Error(`Could not retrieve trust policy for role: ${roleName}`)
@@ -91,12 +96,11 @@ export class TrustRelationshipManager {
         assumeRolePolicyDocument.Version || '2012-10-17'
 
       // Update the role policy
-      await this.iam
-        .updateAssumeRolePolicy({
-          RoleName: roleName,
-          PolicyDocument: JSON.stringify(assumeRolePolicyDocument),
-        })
-        .promise()
+      const updateCommand = new UpdateAssumeRolePolicyCommand({
+        RoleName: roleName,
+        PolicyDocument: JSON.stringify(assumeRolePolicyDocument),
+      })
+      await this.iamClient.send(updateCommand)
 
       return {
         success: true,
