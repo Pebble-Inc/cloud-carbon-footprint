@@ -136,6 +136,7 @@ export default class TestConnectionService {
     this.serviceLogger.info(`WIF_CONFIG_ID: ${gcpConfig.WIF_CONFIG_ID}`)
 
     try {
+
       // Create GCP auth service
       const gcpAuthService = new FalconGCPAuthService()
 
@@ -201,7 +202,6 @@ export default class TestConnectionService {
         `✅ Successfully obtained GCP access token: ${maskedToken}`,
       )
 
-
       this.serviceLogger.info(
         'GCP Workload Identity Federation test completed successfully',
       )
@@ -216,6 +216,11 @@ export default class TestConnectionService {
       } else if (error.message?.includes('token')) {
         this.serviceLogger.error('Token generation failed:', error)
         throw new Error(`GCP token generation failed: ${error.message}`)
+      } else if (error.message?.includes('region')) {
+        this.serviceLogger.error('AWS region configuration error:', error)
+        throw new Error(
+          `AWS region configuration issue: ${error.message} - Make sure AWS_REGION environment variable is set`,
+        )
       } else if (error.response?.data) {
         // Handle GCP API errors with response data
         this.serviceLogger.error('GCP API error response:', error)

@@ -150,11 +150,16 @@ export const TestConnectionMiddleware = async (
   res: express.Response,
 ): Promise<void> => {
   try {
-    // Skip tenant config validation and directly test the AWS connection
+    // Extract the configuration from the request body
     const { configDoc } = req.body
+
+    if (!configDoc) {
+      throw new Error('No configuration provided in the request')
+    }
+
     const testConnectionService = new TestConnectionService()
 
-    // Only test AWS connection for now
+    // Test the connection using the provided configuration
     await testConnectionService.testConnection(configDoc)
 
     res.json({
