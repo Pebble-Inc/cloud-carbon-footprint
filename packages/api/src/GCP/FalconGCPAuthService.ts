@@ -26,7 +26,10 @@ export default class FalconGCPAuthService {
   private async getAWSIdentity(): Promise<string> {
     try {
       const credentials = await fromNodeProviderChain()()
-      const stsClient = new STSClient({ credentials })
+      const stsClient = new STSClient({
+        credentials,
+        region: process.env.AWS_REGION || 'us-east-1',
+      })
       const command = new GetCallerIdentityCommand({})
       const response = await stsClient.send(command)
       return response.Arn || ''
