@@ -24,7 +24,9 @@ export class TrustRelationshipManager {
   private logger: Logger
 
   constructor() {
-    this.iamClient = new IAMClient({})
+    this.iamClient = new IAMClient({
+      region: process.env.AWS_REGION || 'us-east-1', // Specify a default region
+    })
     this.ecsRoleName = roleMap[process.env.ENV || 'dev']
     this.logger = new Logger('TrustRelationshipManager')
   }

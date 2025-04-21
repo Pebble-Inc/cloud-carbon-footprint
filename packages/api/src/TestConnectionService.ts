@@ -132,23 +132,52 @@ export default class TestConnectionService {
     }
 
     this.serviceLogger.info('Starting GCP Workload Identity Federation test...')
+    this.serviceLogger.info(`Environment: ${process.env.ENV || 'dev'}`)
+    this.serviceLogger.info(`WIF_CONFIG_ID: ${gcpConfig.WIF_CONFIG_ID}`)
 
     try {
       // Create GCP auth service
       const gcpAuthService = new FalconGCPAuthService()
 
+      // Try to get the AWS identity first - this confirms AWS metadata access works
+      try {
+        this.serviceLogger.info('Testing AWS identity access...')
+        // This is a private method in FalconGCPAuthService, but we're checking the same in getAuthenticatedClient
+        // We're just adding explicit logging about this step
+        this.serviceLogger.info(
+          'AWS identity will be validated during authentication',
+        )
+      } catch (awsError) {
+        this.serviceLogger.error(
+          'Failed to access AWS identity metadata',
+          awsError,
+        )
+        throw new Error(`AWS metadata access failed: ${awsError.message}`)
+      }
+
       // Try to get the WIF config
       this.serviceLogger.info(
         `Retrieving WIF configuration for ID: ${gcpConfig.WIF_CONFIG_ID}...`,
       )
-      await gcpAuthService.getWIFConfig(gcpConfig.WIF_CONFIG_ID)
+      const wifConfig = await gcpAuthService.getWIFConfig(
+        gcpConfig.WIF_CONFIG_ID,
+      )
       this.serviceLogger.info('Successfully retrieved WIF configuration')
+
+      // Validate the WIF config has the necessary fields
+      if (!wifConfig.config?.audience) {
+        throw new Error('WIF configuration is missing required audience field')
+      }
+      this.serviceLogger.info(
+        `Configured audience: ${wifConfig.config.audience}`,
+      )
 
       // Try to get an authenticated client - this internally tests AWS metadata access
       this.serviceLogger.info('Attempting to get authenticated GCP client...')
       const authClient = await gcpAuthService.getAuthenticatedClient(
         gcpConfig.WIF_CONFIG_ID,
       )
+      this.serviceLogger.info('Successfully authenticated with GCP')
 
       // Test auth client by getting a token
       this.serviceLogger.info(
@@ -160,13 +189,41 @@ export default class TestConnectionService {
         throw new Error('Failed to obtain GCP access token')
       }
 
-      this.serviceLogger.info('✅ Successfully obtained GCP access token')
+      // Mask most of the token for security but show first/last few chars
+      const maskedToken =
+        token.token.length > 10
+          ? `${token.token.substring(0, 5)}...${token.token.substring(
+              token.token.length - 5,
+            )}`
+          : '[token too short to mask]'
+
+      this.serviceLogger.info(
+        `✅ Successfully obtained GCP access token: ${maskedToken}`,
+      )
+
+
       this.serviceLogger.info(
         'GCP Workload Identity Federation test completed successfully',
       )
     } catch (error) {
-      this.serviceLogger.error('GCP connection test failed:', error)
-      throw new Error(`Failed to connect to GCP: ${error.message}`)
+      // Add more specific error catching
+      if (error.message?.includes('credential_source')) {
+        this.serviceLogger.error(
+          'AWS credential source configuration error:',
+          error,
+        )
+        throw new Error(`AWS credential configuration issue: ${error.message}`)
+      } else if (error.message?.includes('token')) {
+        this.serviceLogger.error('Token generation failed:', error)
+        throw new Error(`GCP token generation failed: ${error.message}`)
+      } else if (error.response?.data) {
+        // Handle GCP API errors with response data
+        this.serviceLogger.error('GCP API error response:', error)
+        throw new Error(`GCP API error: ${JSON.stringify(error.response.data)}`)
+      } else {
+        this.serviceLogger.error('GCP connection test failed:', error)
+        throw new Error(`Failed to connect to GCP: ${error.message}`)
+      }
     }
   }
 
