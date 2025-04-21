@@ -127,38 +127,11 @@ export class TrustRelationshipManager {
         }
       }
 
-      // Check if a GCP WIF trust relationship exists with a different audience
+      // Always add a new statement for a new audience - don't update existing ones
       this.logger.info(
-        'Checking if trust relationship with a different audience exists',
+        `Adding new trust relationship with audience '${wifConfig.audience}'`,
       )
-      const existingGcpStatementIndex =
-        assumeRolePolicyDocument.Statement.findIndex(
-          (statement: any) =>
-            statement.Principal?.Federated === 'accounts.google.com' &&
-            statement.Action === 'sts:AssumeRoleWithWebIdentity',
-        )
-      this.logger.info(
-        `Existing statement index with any audience: ${existingGcpStatementIndex}`,
-      )
-
-      // If a GCP WIF trust relationship with a different audience exists, update it
-      if (existingGcpStatementIndex >= 0) {
-        const oldAudience =
-          assumeRolePolicyDocument.Statement[existingGcpStatementIndex]
-            .Condition?.StringEquals?.['accounts.google.com:aud']
-        this.logger.info(
-          `Updating existing GCP trust relationship, changing audience from '${oldAudience}' to '${wifConfig.audience}'`,
-        )
-        assumeRolePolicyDocument.Statement[
-          existingGcpStatementIndex
-        ].Condition.StringEquals['accounts.google.com:aud'] = wifConfig.audience
-      } else {
-        // Otherwise, add the new statement to the policy
-        this.logger.info(
-          'No existing GCP trust relationship found, adding new statement',
-        )
-        assumeRolePolicyDocument.Statement.push(gcpWifStatement)
-      }
+      assumeRolePolicyDocument.Statement.push(gcpWifStatement)
 
       // Make sure the Version is set correctly
       this.logger.info(
@@ -188,7 +161,7 @@ export class TrustRelationshipManager {
       )
       return {
         success: true,
-        message: `Successfully updated trust relationship for role '${this.ecsRoleName}' with audience '${wifConfig.audience}'.`,
+        message: `Successfully added new trust relationship for role '${this.ecsRoleName}' with audience '${wifConfig.audience}'.`,
       }
     } catch (error) {
       this.logger.error(
