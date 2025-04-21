@@ -18,6 +18,7 @@ import {
 import Migration from './Migration'
 import GCPWIFConfigService from './GCP/GCPWIFConfigService'
 import TrustRelationshipManager from './AWS/TrustRelationshipManager'
+import { IGCPWIFConfig } from './GCP/IGCPWIFConfig'
 
 export const createRouter = (config?: CCFConfig) => {
   setConfig(config)
@@ -216,7 +217,7 @@ export const createRouter = (config?: CCFConfig) => {
     '/gcp-wif-trust-relationship',
     async (req: express.Request, res: express.Response): Promise<void> => {
       try {
-        const { config } = req.body
+        const { config } = req.body as { config: IGCPWIFConfig['config'] }
 
         if (!config || !config.audience) {
           throw new Error(
