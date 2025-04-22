@@ -313,6 +313,9 @@ export class FalconFootprint {
       }
       this.logger.info('Finished GCP Estimations')
     }
+    this.logger.info(
+      `GCP Results before filtering: ${JSON.stringify(gcpResults)}`,
+    )
     return gcpResults
   }
 
