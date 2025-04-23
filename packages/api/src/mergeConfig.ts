@@ -28,6 +28,9 @@ export const mergeConfig = (ccfConfig: Partial<CCFConfig>) => {
     GCP: {
       ..._config.GCP,
       ...ccfConfig.GCP,
+      ...{
+        USE_BILLING_DATA: Boolean(ccfConfig.GCP?.BILLING_PROJECT_ID),
+      },
     },
     AZURE: {
       ..._config.AZURE,
