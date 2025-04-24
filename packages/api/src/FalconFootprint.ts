@@ -288,7 +288,7 @@ export class FalconFootprint {
       return []
     }
     this.logger.info(`GCP Config: ${JSON.stringify(GCP)}`)
-
+    this.logger.info(`WIF Config ID: ${wifConfigId}`)
     if (GCP?.INCLUDE_ESTIMATES) {
       this.logger.info('Starting GCP Estimations')
       if (GCP?.USE_BILLING_DATA) {
