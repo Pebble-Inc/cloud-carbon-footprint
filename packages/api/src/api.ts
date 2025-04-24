@@ -15,6 +15,9 @@ import {
   FootprintV2ApiMiddleware,
   RecommendationsV2ApiMiddleware,
 } from './middleware'
+import {
+  DeleteTenantService
+} from './tenant/DeleteTenantService'
 import Migration from './Migration'
 import GCPWIFConfigService from './GCP/GCPWIFConfigService'
 import TrustRelationshipManager from './AWS/TrustRelationshipManager'
@@ -33,6 +36,8 @@ export const createRouter = (config?: CCFConfig) => {
   const migrationService = new Migration()
   const tenantDBService = new TenantDBService()
   const trustRelationshipManager = new TrustRelationshipManager()
+  const deleteTenantService = new DeleteTenantService()
+
 
   /**
    * @openapi
