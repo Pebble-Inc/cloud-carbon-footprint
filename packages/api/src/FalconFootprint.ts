@@ -132,10 +132,7 @@ export class FalconFootprint {
           ...rest,
         })
         const results = await (this.isGCPConfig(config)
-          ? this.getGCPData(
-              config.configDoc.GCP.WIF_CONFIG_ID,
-              estimationRequest,
-            )
+          ? this.getGCPData(config, estimationRequest)
           : footprintApp.getCostAndEstimates(estimationRequest))
         const filteredResults = this.applyFilters(results, rawRequest)
         estimationResults.push(...filteredResults)
@@ -272,10 +269,10 @@ export class FalconFootprint {
   }
 
   private async getGCPData(
-    wifConfigId: string,
+    config: ITenantConfig,
     request: EstimationRequest,
   ): Promise<EstimationResult[]> {
-    const { GCP } = configLoader()
+    const { GCP } = config.configDoc
     const gcpResults: EstimationResult[] = []
 
     const { startDate, endDate } = request
@@ -288,7 +285,7 @@ export class FalconFootprint {
       return []
     }
     this.logger.info(`GCP Config: ${JSON.stringify(GCP)}`)
-    this.logger.info(`WIF Config ID: ${wifConfigId}`)
+
     if (GCP?.INCLUDE_ESTIMATES) {
       this.logger.info('Starting GCP Estimations')
       if (GCP?.USE_BILLING_DATA) {
@@ -296,7 +293,7 @@ export class FalconFootprint {
           GCP.BILLING_PROJECT_ID,
           GCP.BILLING_PROJECT_NAME,
           [],
-          wifConfigId,
+          GCP.WIF_CONFIG_ID,
         ).getDataFromBillingExportTable(startDate, endDate, grouping)
         gcpResults.push(...estimates)
       } else if (GCP?.projects.length) {
@@ -308,7 +305,7 @@ export class FalconFootprint {
               project.id,
               project.name,
               GCP.CURRENT_REGIONS,
-              wifConfigId,
+              GCP.WIF_CONFIG_ID,
             ).getDataForRegions(startDate, endDate, grouping),
           )
           gcpResults.push(...estimates)
