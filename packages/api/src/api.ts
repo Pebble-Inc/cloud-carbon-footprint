@@ -39,26 +39,24 @@ export const createRouter = (config?: CCFConfig) => {
   const deleteTenantService = new DeleteTenantService()
 /**
  * @openapi
- * /tenant/{awsAccountId}:
- *   delete:
+ * /tenant:
+ *   post:
  *     tags:
  *       - Tenant
  *     summary: Delete all resources for a tenant
  *     description: Cleans up S3 buckets, Cost & Usage report, and deletes the CloudFormation stack for the given AWS account.
- *     parameters:
- *       - in: path
- *         name: awsAccountId
- *         required: true
- *         schema:
- *           type: string
- *         description: AWS Account ID of the tenant to delete
  *     requestBody:
- *       required: false
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - awsAccountId
  *             properties:
+ *               awsAccountId:
+ *                 type: string
+ *                 description: AWS Account ID of the tenant to delete
  *               region:
  *                 type: string
  *                 description: AWS region to target (defaults to us-east-1)
@@ -66,7 +64,7 @@ export const createRouter = (config?: CCFConfig) => {
  *       204:
  *         description: Tenant deletion initiated successfully
  *       400:
- *         description: Bad request (e.g., missing required parameters)
+ *         description: Bad request (e.g., missing awsAccountId)
  *         content:
  *           application/json:
  *             schema:
@@ -84,21 +82,29 @@ export const createRouter = (config?: CCFConfig) => {
  *                 error:
  *                   type: string
  */
-  router.delete(
-    '/tenant/:awsAccountId',
-    async (req: express.Request, res: express.Response) => {
-      const { awsAccountId } = req.params
-      const region = (req.body.region as string) || 'us-east-1'
-      try {
-        await deleteTenantService.DeleteTenant(awsAccountId, region)
-        res.sendStatus(204)
-      } catch (err) {
-        console.error('Error deleting tenant:', err)
-        res.status(500).json({ error: (err as Error).message })
-      }
-    },
-  )
+router.post(
+  '/tenant/delete',
+  async (req: express.Request, res: express.Response) => {
+    const { awsAccountId, region = 'us-east-1' } = req.body as {
+      awsAccountId?: string
+      region?: string
+    }
 
+    if (!awsAccountId) {
+      return res
+        .status(400)
+        .json({ error: 'Missing required field: awsAccountId' })
+    }
+
+    try {
+      await deleteTenantService.DeleteTenant(awsAccountId, region)
+      return res.sendStatus(204)
+    } catch (err) {
+      console.error('Error deleting tenant:', err)
+      return res.status(500).json({ error: (err as Error).message })
+    }
+  },
+)
 
   /**
    * @openapi
