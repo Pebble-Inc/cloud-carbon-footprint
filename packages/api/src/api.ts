@@ -15,6 +15,9 @@ import {
   FootprintV2ApiMiddleware,
   RecommendationsV2ApiMiddleware,
 } from './middleware'
+import {
+  DeleteTenantService
+} from './tenant/DeleteTenantService'
 import Migration from './Migration'
 import GCPWIFConfigService from './GCP/GCPWIFConfigService'
 import TrustRelationshipManager from './AWS/TrustRelationshipManager'
@@ -33,6 +36,69 @@ export const createRouter = (config?: CCFConfig) => {
   const migrationService = new Migration()
   const tenantDBService = new TenantDBService()
   const trustRelationshipManager = new TrustRelationshipManager()
+  const deleteTenantService = new DeleteTenantService()
+/**
+ * @openapi
+ * /tenant/{awsAccountId}:
+ *   delete:
+ *     tags:
+ *       - Tenant
+ *     summary: Delete all resources for a tenant
+ *     description: Cleans up S3 buckets, Cost & Usage report, and deletes the CloudFormation stack for the given AWS account.
+ *     parameters:
+ *       - in: path
+ *         name: awsAccountId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: AWS Account ID of the tenant to delete
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               region:
+ *                 type: string
+ *                 description: AWS region to target (defaults to us-east-1)
+ *     responses:
+ *       204:
+ *         description: Tenant deletion initiated successfully
+ *       400:
+ *         description: Bad request (e.g., missing required parameters)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
+  router.delete(
+    '/tenant/:awsAccountId',
+    async (req: express.Request, res: express.Response) => {
+      const { awsAccountId } = req.params
+      const region = (req.body.region as string) || 'us-east-1'
+      try {
+        await deleteTenantService.DeleteTenant(awsAccountId, region)
+        res.sendStatus(204)
+      } catch (err) {
+        console.error('Error deleting tenant:', err)
+        res.status(500).json({ error: (err as Error).message })
+      }
+    },
+  )
+
 
   /**
    * @openapi
