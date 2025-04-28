@@ -83,7 +83,7 @@ export const createRouter = (config?: CCFConfig) => {
  *                   type: string
  */
 router.post(
-  '/tenant',
+  '/tenant/delete',
   async (req: express.Request, res: express.Response) => {
     const { awsAccountId, region = 'us-east-1' } = req.body as {
       awsAccountId?: string
