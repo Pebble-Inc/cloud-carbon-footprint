@@ -15,12 +15,21 @@ import swaggerDocs from './utils/swagger'
 const port = process.env.PORT || 4000
 const httpApp = express()
 const serverLogger = new Logger('Server')
+const env = process.env.ENV
 
 const DOCUMENTDB = {
-  URI: 'mongodb://docdb-2025-01-27-19-05-01.cluster-cviym42omp5c.us-east-1.docdb.amazonaws.com:27017',
-  SSL_CA_FILE: '/usr/src/app/certs/global-bundle.pem',
-  USERNAME: 'pebbledevccf',
-  PASSWORD: 'PasswordPebblePassword',
+  dev: {
+    URI: 'mongodb://docdb-2025-01-27-19-05-01.cluster-cviym42omp5c.us-east-1.docdb.amazonaws.com:27017',
+    SSL_CA_FILE: '/usr/src/app/certs/global-bundle.pem',
+    USERNAME: 'pebbledevccf',
+    PASSWORD: 'PasswordPebblePassword',
+  },
+  prod: {
+    URI: 'mongodb://docdb-2025-04-22-08-27-09-pebble.cluster-cviym42omp5c.us-east-1.docdb.amazonaws.com:27017',
+    SSL_CA_FILE: '/usr/src/app/certs/global-bundle.pem',
+    USERNAME: 'docdbadmin',
+    PASSWORD: 'UzJ859cQi2hubOUH',
+  },
 }
 
 /**
@@ -29,13 +38,14 @@ const DOCUMENTDB = {
  * @throws Error if connection fails or invalid TENANT_DB configuration
  */
 const connectToDatabase = async (): Promise<void> => {
-  await mongoose.connect(DOCUMENTDB?.URI, {
+  const docdb = DOCUMENTDB[env]
+  await mongoose.connect(docdb?.URI, {
     serverSelectionTimeoutMS: 5000,
     tls: true,
-    tlsCAFile: DOCUMENTDB?.SSL_CA_FILE,
+    tlsCAFile: docdb?.SSL_CA_FILE,
     authSource: 'admin',
-    user: DOCUMENTDB?.USERNAME,
-    pass: DOCUMENTDB?.PASSWORD,
+    user: docdb?.USERNAME,
+    pass: docdb?.PASSWORD,
     retryWrites: false, // DocumentDB doesn't support retryWrites
   })
   serverLogger.info('Successfully connected to DocumentDB using Mongoose')
