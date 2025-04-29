@@ -48,7 +48,6 @@ export class DeleteTenantService {
     // 2. Clean the two known S3 buckets
     const s3 = new S3Client(clientConfig)
     const bucketNames = [
-      `ccf-athena-query-${awsAccountId}`,
       `ccf-cost-usage-report-output-${awsAccountId}`,
     ]
 
@@ -103,7 +102,7 @@ export class DeleteTenantService {
     const cf = new CloudFormationClient(clientConfig)
     const stackName = 'ccf'
     this.logger.info(`Deleting CloudFormation stack '${stackName}'…`)
-    await cf.send(new DeleteStackCommand({ StackName: stackName }))
+    await cf.send(new DeleteStackCommand({ StackName: stackName,RoleARN: roleArn }))
     await waitUntilStackDeleteComplete(
       { client: cf, maxWaitTime: 600 },
       { StackName: stackName }
