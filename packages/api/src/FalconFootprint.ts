@@ -140,7 +140,13 @@ export class FalconFootprint {
         })
         const results = await (this.isGCPConfig(config)
           ? this.getGCPData(config, estimationRequest)
-          : footprintApp.getCostAndEstimates(estimationRequest))
+          : (
+          this.isOnPremiseConfig(config)
+          ? this.processOnPremiseData(config, estimationRequest)
+          : footprintApp.getCostAndEstimates(estimationRequest)))
+
+
+
         const filteredResults = this.applyFilters(results, rawRequest)
         estimationResults.push(...filteredResults)
       } catch (e) {
@@ -330,9 +336,13 @@ export class FalconFootprint {
     return Boolean(config.configDoc.GCP?.BILLING_PROJECT_ID)
   }
 
-  private async processOnPremiseData(tenantId: string): Promise<EstimationResult[]> {
+  private isOnPremiseConfig(config: ITenantConfig): boolean {
+    return config.configDoc.ON_PREMISE && Object.keys(config.configDoc.ON_PREMISE).length > 0
+  }
+
+  private async processOnPremiseData(config: ITenantConfig, estimationRequest: EstimationRequest): Promise<EstimationResult[]> {
     try {
-      const onPremiseData = await OnPremiseData.find({ tenantId }).lean()
+      const onPremiseData = await OnPremiseData.find({ tenantId: config.tenantId }).lean()
       if (onPremiseData.length === 0) {
         return []
       }
@@ -341,6 +351,8 @@ export class FalconFootprint {
       // Transform on-premise results to EstimationResult format
       return onPremiseResults.map(result => ({
         timestamp: result.startTime,
+        periodStartDate: result.startTime,
+        periodEndDate: result.endTime,
         serviceEstimates: [{
           cloudProvider: 'ON_PREMISE',
           serviceName: result.machineType,
@@ -349,8 +361,8 @@ export class FalconFootprint {
           cost: result.cost || 0,
           region: result.region,
           usesAverageCPUConstant: false,
-          accountId: result.machineName || 'unknown',
-          accountName: result.machineName || 'unknown'
+          accountId: result.machineName || null,
+          accountName: result.machineName || null
         }],
         groupBy: GroupBy.day
       }))

@@ -19,6 +19,7 @@ export interface ITenantConfig {
     ALI?: CCFConfig['ALI']
     LOGGING_MODE?: string
     ELECTRICITY_MAPS_TOKEN?: string
+    ON_PREMISE?: CCFConfig['ON_PREMISE']
   }
 }
 
@@ -154,6 +155,32 @@ const tenantConfigSchema = new Schema(
           authentication: {
             accessKeyId: { type: String, default: '' },
             accessKeySecret: { type: String, default: '' },
+          },
+        },
+        required: false,
+      },
+      ON_PREMISE: {
+        type: {
+          SERVER: {
+            type: {
+              CPU_UTILIZATION: { type: Number, default: 50 },
+              AVERAGE_WATTS: { type: Number, default: 0 },
+            },
+            required: false,
+          },
+          LAPTOP: {
+            type: {
+              CPU_UTILIZATION: { type: Number, default: 50 },
+              AVERAGE_WATTS: { type: Number, default: 0 },
+            },
+            required: false,
+          },
+          DESKTOP: {
+            type: {
+              CPU_UTILIZATION: { type: Number, default: 50 },
+              AVERAGE_WATTS: { type: Number, default: 0 },
+            },
+            required: false,
           },
         },
         required: false,
