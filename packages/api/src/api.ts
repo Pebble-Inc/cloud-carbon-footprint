@@ -15,17 +15,28 @@ import {
   FootprintV2ApiMiddleware,
   RecommendationsV2ApiMiddleware,
 } from './middleware'
-import {
-  DeleteTenantService
-} from './tenant/DeleteTenantService'
+import { DeleteTenantService } from './tenant/DeleteTenantService'
 import Migration from './Migration'
 import GCPWIFConfigService from './GCP/GCPWIFConfigService'
 import TrustRelationshipManager from './AWS/TrustRelationshipManager'
 import { IGCPWIFConfig } from './GCP/IGCPWIFConfig'
+import OnPremiseDataService from './OnPremise/OnPremiseDataService'
+import multer from 'multer'
+import { Request } from 'express'
+
+interface MulterRequest extends Request {
+  file?: {
+    buffer: Buffer
+    originalname: string
+    mimetype: string
+    size: number
+  }
+}
 
 export const createRouter = (config?: CCFConfig) => {
   setConfig(config)
   const router = express.Router()
+  const upload = multer({ storage: multer.memoryStorage() })
 
   // Add debug logging
   console.log('Debug: TenantConfigService:', TenantConfigService)
@@ -37,74 +48,76 @@ export const createRouter = (config?: CCFConfig) => {
   const tenantDBService = new TenantDBService()
   const trustRelationshipManager = new TrustRelationshipManager()
   const deleteTenantService = new DeleteTenantService()
-/**
- * @openapi
- * /tenant:
- *   post:
- *     tags:
- *       - Tenant
- *     summary: Delete all resources for a tenant
- *     description: Cleans up S3 buckets, Cost & Usage report, and deletes the CloudFormation stack for the given AWS account.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - awsAccountId
- *             properties:
- *               awsAccountId:
- *                 type: string
- *                 description: AWS Account ID of the tenant to delete
- *               region:
- *                 type: string
- *                 description: AWS region to target (defaults to us-east-1)
- *     responses:
- *       204:
- *         description: Tenant deletion initiated successfully
- *       400:
- *         description: Bad request (e.g., missing awsAccountId)
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- */
-router.post(
-  '/tenant/delete',
-  async (req: express.Request, res: express.Response) => {
-    const { awsAccountId, region = 'us-east-1' } = req.body as {
-      awsAccountId?: string
-      region?: string
-    }
+  const onPremiseDataService = new OnPremiseDataService()
 
-    if (!awsAccountId) {
-      return res
-        .status(400)
-        .json({ error: 'Missing required field: awsAccountId' })
-    }
+  /**
+   * @openapi
+   * /tenant:
+   *   post:
+   *     tags:
+   *       - Tenant
+   *     summary: Delete all resources for a tenant
+   *     description: Cleans up S3 buckets, Cost & Usage report, and deletes the CloudFormation stack for the given AWS account.
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - awsAccountId
+   *             properties:
+   *               awsAccountId:
+   *                 type: string
+   *                 description: AWS Account ID of the tenant to delete
+   *               region:
+   *                 type: string
+   *                 description: AWS region to target (defaults to us-east-1)
+   *     responses:
+   *       204:
+   *         description: Tenant deletion initiated successfully
+   *       400:
+   *         description: Bad request (e.g., missing awsAccountId)
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 error:
+   *                   type: string
+   *       500:
+   *         description: Internal server error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 error:
+   *                   type: string
+   */
+  router.post(
+    '/tenant/delete',
+    async (req: express.Request, res: express.Response) => {
+      const { awsAccountId, region = 'us-east-1' } = req.body as {
+        awsAccountId?: string
+        region?: string
+      }
 
-    try {
-      await deleteTenantService.DeleteTenant(awsAccountId, region)
-      return res.sendStatus(204)
-    } catch (err) {
-      console.error('Error deleting tenant:', err)
-      return res.status(500).json({ error: (err as Error).message })
-    }
-  },
-)
+      if (!awsAccountId) {
+        return res
+          .status(400)
+          .json({ error: 'Missing required field: awsAccountId' })
+      }
+
+      try {
+        await deleteTenantService.DeleteTenant(awsAccountId, region)
+        return res.sendStatus(204)
+      } catch (err) {
+        console.error('Error deleting tenant:', err)
+        return res.status(500).json({ error: (err as Error).message })
+      }
+    },
+  )
 
   /**
    * @openapi
@@ -1229,6 +1242,147 @@ router.post(
    *         description: Internal Server Error
    */
   router.get('/recommendationsV2', RecommendationsV2ApiMiddleware)
+
+  /**
+   * @openapi
+   * /api/on-premise/upload:
+   *  post:
+   *     tags:
+   *     - On-Premise
+   *     summary: Upload on-premise data CSV
+   *     description: Uploads a CSV file containing on-premise data and stores it in the database
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               file:
+   *                 type: string
+   *                 format: binary
+   *                 description: CSV file containing on-premise data
+   *     responses:
+   *       200:
+   *         description: CSV uploaded successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 uploadId:
+   *                   type: string
+   *                   description: Unique identifier for the uploaded data
+   *       400:
+   *         description: Invalid CSV format or missing required fields
+   *       500:
+   *         description: Internal server error
+   */
+  router.post(
+    '/on-premise/upload',
+    upload.single('file'),
+    async (req: MulterRequest, res: express.Response): Promise<void> => {
+      try {
+        if (!req.file) {
+          res.status(400).json({ error: 'No file uploaded' })
+          return
+        }
+
+        const uploadId = await onPremiseDataService.uploadCSV(req.file.buffer)
+        res.status(200).json({ uploadId })
+      } catch (error) {
+        res.status(400).json({ error: error.message })
+      }
+    },
+  )
+
+  /**
+   * @openapi
+   * /api/on-premise/{uploadId}:
+   *  get:
+   *     tags:
+   *     - On-Premise
+   *     summary: Get on-premise data by upload ID
+   *     description: Retrieves all on-premise data records associated with a specific upload
+   *     parameters:
+   *       - name: uploadId
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: ID of the upload to retrieve data for
+   *     responses:
+   *       200:
+   *         description: Success
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 $ref: '#/components/schemas/OnPremiseData'
+   *       404:
+   *         description: No data found for upload ID
+   *       500:
+   *         description: Internal server error
+   */
+  router.get(
+    '/on-premise/:uploadId',
+    async (req: express.Request, res: express.Response): Promise<void> => {
+      try {
+        const data = await onPremiseDataService.getDataByUploadId(
+          req.params.uploadId,
+        )
+        if (!data.length) {
+          res.status(404).json({ error: 'No data found for upload ID' })
+          return
+        }
+        res.json(data)
+      } catch (error) {
+        res.status(500).json({ error: error.message })
+      }
+    },
+  )
+
+  /**
+   * @openapi
+   * /api/on-premise/{uploadId}:
+   *  delete:
+   *     tags:
+   *     - On-Premise
+   *     summary: Delete on-premise data by upload ID
+   *     description: Deletes all on-premise data records associated with a specific upload
+   *     parameters:
+   *       - name: uploadId
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: ID of the upload to delete data for
+   *     responses:
+   *       204:
+   *         description: Data deleted successfully
+   *       404:
+   *         description: No data found for upload ID
+   *       500:
+   *         description: Internal server error
+   */
+  router.delete(
+    '/on-premise/:uploadId',
+    async (req: express.Request, res: express.Response): Promise<void> => {
+      try {
+        const deleted = await onPremiseDataService.deleteDataByUploadId(
+          req.params.uploadId,
+        )
+        if (!deleted) {
+          res.status(404).json({ error: 'No data found for upload ID' })
+          return
+        }
+        res.status(204).send()
+      } catch (error) {
+        res.status(500).json({ error: error.message })
+      }
+    },
+  )
 
   return router
 }
