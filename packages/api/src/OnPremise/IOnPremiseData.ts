@@ -53,10 +53,12 @@ const onPremiseDataSchema = new Schema(
     startTime: {
       type: Date,
       required: true,
+      index: true,
     },
     endTime: {
       type: Date,
       required: true,
+      index: true,
     },
     country: {
       type: String,
@@ -97,6 +99,9 @@ const onPremiseDataSchema = new Schema(
   },
   { timestamps: true },
 )
+
+// Create compound index for tenantId and date range queries
+onPremiseDataSchema.index({ tenantId: 1, startTime: 1, endTime: 1 })
 
 export type OnPremiseDataDocument = mongoose.Document & IOnPremiseData
 

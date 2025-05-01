@@ -111,9 +111,6 @@ export class FalconFootprint {
     const { configs, ...rest } = rawRequest
     const estimationResults: EstimationResult[] = []
 
-    // Process on-premise data
-    const onPremiseResults = await this.processOnPremiseData(tenantId)
-    estimationResults.push(...onPremiseResults)
 
     const configsToUse =
       configs && configs.length > 0
@@ -342,7 +339,14 @@ export class FalconFootprint {
 
   private async processOnPremiseData(config: ITenantConfig, estimationRequest: EstimationRequest): Promise<EstimationResult[]> {
     try {
-      const onPremiseData = await OnPremiseData.find({ tenantId: config.tenantId }).lean()
+      const { startDate, endDate } = estimationRequest
+      const onPremiseData = await OnPremiseData.find({
+        tenantId: config.tenantId,
+        startTime: {
+          $gte: startDate,
+          $lte: endDate
+        }
+      }).lean()
       if (onPremiseData.length === 0) {
         return []
       }
