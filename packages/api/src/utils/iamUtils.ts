@@ -10,7 +10,6 @@ const awsRegion = process.env.AWS_REGION || 'us-east-1'
 const ecsRoleNameDev = 'pebble-dev-ecs-exec-role20241211135546171100000002'
 const ecsRoleNameProd = 'pebble-prod-ecs-exec-role20250120114714445800000002'
 
-
 // Initialize IAM client
 const client = new IAMClient({ region: awsRegion })
 

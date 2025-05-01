@@ -136,7 +136,6 @@ export default class TestConnectionService {
     this.serviceLogger.info(`WIF_CONFIG_ID: ${gcpConfig.WIF_CONFIG_ID}`)
 
     try {
-
       // Create GCP auth service
       const gcpAuthService = new FalconGCPAuthService()
 
