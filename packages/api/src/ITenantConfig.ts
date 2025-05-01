@@ -26,7 +26,7 @@ export interface ITenantConfig {
 // Create the schema
 const tenantConfigSchema = new Schema(
   {
-    tenantId: { type: String, required: true, unique: false },
+    tenantId: { type: String, required: true, unique: false, index: true },
     configId: {
       type: String,
       required: true,
