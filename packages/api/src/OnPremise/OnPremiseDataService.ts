@@ -5,7 +5,6 @@
 import { Logger } from '@cloud-carbon-footprint/common'
 import { IOnPremiseData, OnPremiseData } from './IOnPremiseData'
 import { parse } from 'csv-parse/sync'
-import { Readable } from 'stream'
 
 export default class OnPremiseDataService {
   private readonly logger: Logger
@@ -33,14 +32,10 @@ export default class OnPremiseDataService {
       'annualUptime',
     ]
 
-    const missingFields = requiredFields.filter(
-      (field) => !data[field],
-    )
+    const missingFields = requiredFields.filter((field) => !data[field])
 
     if (missingFields.length > 0) {
-      throw new Error(
-        `Missing required fields: ${missingFields.join(', ')}`,
-      )
+      throw new Error(`Missing required fields: ${missingFields.join(', ')}`)
     }
   }
 
@@ -70,8 +65,10 @@ export default class OnPremiseDataService {
 
         if (record.machineName) data.machineName = record.machineName
         if (record.cost) data.cost = Number(record.cost)
-        if (record.cpuUtilization) data.cpuUtilization = Number(record.cpuUtilization)
-        if (record.powerUsageEffectiveness) data.powerUsageEffectiveness = Number(record.powerUsageEffectiveness)
+        if (record.cpuUtilization)
+          data.cpuUtilization = Number(record.cpuUtilization)
+        if (record.powerUsageEffectiveness)
+          data.powerUsageEffectiveness = Number(record.powerUsageEffectiveness)
 
         this.validateOnPremiseData(data)
         return data
@@ -114,4 +111,4 @@ export default class OnPremiseDataService {
       throw error
     }
   }
-} 
+}
