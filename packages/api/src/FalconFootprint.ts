@@ -27,6 +27,9 @@ import { mergeConfig } from './mergeConfig'
 import { ITenantConfig } from './ITenantConfig'
 import FalconGCPAccount from './GCP/FalconGCPAccount'
 import { AccountDetails } from '@cloud-carbon-footprint/common'
+import { OnPremiseData } from './OnPremise/IOnPremiseData'
+import { OnPremise } from '@cloud-carbon-footprint/on-premise'
+
 interface EstimationRequest {
   startDate: Date
   endDate: Date
@@ -107,6 +110,10 @@ export class FalconFootprint {
 
     const { configs, ...rest } = rawRequest
     const estimationResults: EstimationResult[] = []
+
+    // Process on-premise data
+    const onPremiseResults = await this.processOnPremiseData(tenantId)
+    estimationResults.push(...onPremiseResults)
 
     const configsToUse =
       configs && configs.length > 0
@@ -321,5 +328,35 @@ export class FalconFootprint {
 
   private isGCPConfig(config: ITenantConfig): boolean {
     return Boolean(config.configDoc.GCP?.BILLING_PROJECT_ID)
+  }
+
+  private async processOnPremiseData(tenantId: string): Promise<EstimationResult[]> {
+    try {
+      const onPremiseData = await OnPremiseData.find({ tenantId }).lean()
+      if (onPremiseData.length === 0) {
+        return []
+      }
+
+      const onPremiseResults = OnPremise.getOnPremiseDataFromInputData(onPremiseData)
+      // Transform on-premise results to EstimationResult format
+      return onPremiseResults.map(result => ({
+        timestamp: result.startTime,
+        serviceEstimates: [{
+          cloudProvider: 'ON_PREMISE',
+          serviceName: result.machineType,
+          kilowattHours: result.dailyKilowattHours,
+          co2e: result.dailyCo2e,
+          cost: result.cost || 0,
+          region: result.region,
+          usesAverageCPUConstant: false,
+          accountId: result.machineName || 'unknown',
+          accountName: result.machineName || 'unknown'
+        }],
+        groupBy: GroupBy.day
+      }))
+    } catch (e) {
+      this.logger.error('Error processing on-premise data:', e)
+      return []
+    }
   }
 }

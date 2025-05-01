@@ -6,6 +6,7 @@ import mongoose, { Schema } from 'mongoose'
 
 export interface IOnPremiseData {
   uploadId: string
+  tenantId: string
   cpuDescription: string
   memory: number
   machineType: string
@@ -28,6 +29,11 @@ export interface IOnPremiseData {
 const onPremiseDataSchema = new Schema(
   {
     uploadId: {
+      type: String,
+      required: true,
+      index: true,
+    },
+    tenantId: {
       type: String,
       required: true,
       index: true,
@@ -98,4 +104,4 @@ export const OnPremiseData = mongoose.model<OnPremiseDataDocument>(
   'OnPremiseData',
   onPremiseDataSchema,
   'onpremisedata',
-) 
+)

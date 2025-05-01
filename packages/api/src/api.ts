@@ -23,14 +23,10 @@ import { IGCPWIFConfig } from './GCP/IGCPWIFConfig'
 import OnPremiseDataService from './OnPremise/OnPremiseDataService'
 import multer from 'multer'
 import { Request } from 'express'
+import { Multer } from 'multer'
 
 interface MulterRequest extends Request {
-  file?: {
-    buffer: Buffer
-    originalname: string
-    mimetype: string
-    size: number
-  }
+  file?: Express.Multer.File
 }
 
 export const createRouter = (config?: CCFConfig) => {
