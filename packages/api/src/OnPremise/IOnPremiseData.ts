@@ -66,7 +66,6 @@ const onPremiseDataSchema = new Schema(
     },
     region: {
       type: String,
-      required: true,
     },
     machineName: {
       type: String,
@@ -82,15 +81,12 @@ const onPremiseDataSchema = new Schema(
     },
     dailyUptime: {
       type: Number,
-      required: true,
     },
     weeklyUptime: {
       type: Number,
-      required: true,
     },
     monthlyUptime: {
       type: Number,
-      required: true,
     },
     annualUptime: {
       type: Number,
