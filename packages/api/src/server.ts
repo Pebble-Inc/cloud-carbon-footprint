@@ -68,30 +68,30 @@ const startServer = async () => {
   const config = configLoader()
   setConfig(config)
 
-  serverLogger.info('**Debug: Configuration loaded:**')
-  serverLogger.info(`${JSON.stringify(config)}`)
-  serverLogger.info('**End of Configuration**')
-
   try {
     // Establish database connection
     await connectToDatabase()
 
-    if (process.env.ENABLE_CORS) {
-      const corsOptions: CorsOptions = {
-        optionsSuccessStatus: 200,
-      }
-
-      if (process.env.CORS_ALLOW_ORIGIN) {
-        serverLogger.info(
-          'Allowing CORS requests from origin(s) ' +
-            process.env.CORS_ALLOW_ORIGIN,
-        )
-        corsOptions.origin = process.env.CORS_ALLOW_ORIGIN.split(',')
-      }
-
-      httpApp.use(cors(corsOptions))
+    // Configure CORS
+    const corsOptions: CorsOptions = {
+      optionsSuccessStatus: 200,
+      origin: [
+        /\.gopebble\.com$/,  // Allow all gopebble.com subdomains
+        /^https?:\/\/localhost(:\d+)?$/  // Allow any localhost protocol and port
+      ],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'x-tenant-id',
+        'x-config-id'
+      ],
+      credentials: true,
+      maxAge: 86400 // 24 hours
     }
 
+    httpApp.use(cors(corsOptions))
     httpApp.use('/api', createRouter())
 
     httpApp.listen(port, () => {
