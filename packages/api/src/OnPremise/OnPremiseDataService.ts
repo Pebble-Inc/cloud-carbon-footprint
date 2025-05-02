@@ -25,10 +25,6 @@ export default class OnPremiseDataService {
       'startTime',
       'endTime',
       'country',
-      'region',
-      'dailyUptime',
-      'weeklyUptime',
-      'monthlyUptime',
       'annualUptime',
     ]
 
