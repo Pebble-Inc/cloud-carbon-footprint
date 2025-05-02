@@ -39,7 +39,7 @@ export default class OnPremiseDataService {
     }
   }
 
-  async uploadCSV(fileBuffer: Buffer): Promise<string> {
+  async uploadCSV(fileBuffer: Buffer, tenantId: string): Promise<string> {
     try {
       const uploadId = this.generateUploadId()
       const records = parse(fileBuffer, {
@@ -50,6 +50,7 @@ export default class OnPremiseDataService {
       const onPremiseDataRecords = records.map((record: any) => {
         const data: Partial<IOnPremiseData> = {
           uploadId,
+          tenantId,
           cpuDescription: record.cpuDescription,
           memory: Number(record.memory),
           machineType: record.machineType,

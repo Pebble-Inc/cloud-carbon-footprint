@@ -1284,7 +1284,13 @@ export const createRouter = (config?: CCFConfig) => {
           return
         }
 
-        const uploadId = await onPremiseDataService.uploadCSV(req.file.buffer)
+        const tenantId = req.headers['x-tenant-id'] as string
+        if (!tenantId) {
+          res.status(400).json({ error: 'Missing required header: x-tenant-id' })
+          return
+        }
+
+        const uploadId = await onPremiseDataService.uploadCSV(req.file.buffer, tenantId)
         res.status(200).json({ uploadId })
       } catch (error) {
         res.status(400).json({ error: error.message })
