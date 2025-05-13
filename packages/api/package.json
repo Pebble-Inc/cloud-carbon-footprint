@@ -77,7 +77,7 @@
   "dependencies": {
     "@aws-sdk/client-cloudformation": "^3.787.0",
     "@aws-sdk/client-cost-and-usage-report-service": "^3.787.0",
-    "@aws-sdk/client-iam": "^3.758.0",
+    "@aws-sdk/client-iam": "^3.787.0",
     "@aws-sdk/client-s3": "^3.787.0",
     "@aws-sdk/client-sts": "^3.787.0",
     "@aws-sdk/credential-providers": "^3.0.0",
