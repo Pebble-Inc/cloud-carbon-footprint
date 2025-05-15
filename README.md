@@ -8,7 +8,7 @@
 
 If you would like to learn more about the various calculations and constants that we use for the emissions estimates, check out the [Methodology page](https://www.cloudcarbonfootprint.org/docs/methodology).
 
-## Getting Started
+## Getting Started.
 
 The core logic is exposed through 2 applications: a CLI and a website. The CLI resides in `packages/cli/`, and the website is split between `packages/api/` and `packages/client/`
 
