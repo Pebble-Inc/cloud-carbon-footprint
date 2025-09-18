@@ -16,11 +16,17 @@ const port = process.env.PORT || 4000
 const httpApp = express()
 const serverLogger = new Logger('Server')
 
-const DOCUMENTDB = {
-  URI: 'mongodb://docdb-2025-01-27-19-05-01.cluster-cviym42omp5c.us-east-1.docdb.amazonaws.com:27017',
-  SSL_CA_FILE: '/usr/src/app/certs/global-bundle.pem',
-  USERNAME: 'pebbledevccf',
-  PASSWORD: 'PasswordPebblePassword',
+// const DOCUMENTDB = {
+// URI: 'mongodb://docdb-2025-01-27-19-05-01.cluster-cviym42omp5c.us-east-1.docdb.amazonaws.com:27017',
+// SSL_CA_FILE: '/usr/src/app/certs/global-bundle.pem',
+// USERNAME: 'pebbledevccf',
+// PASSWORD: 'PasswordPebblePassword',
+// }
+
+const DOCUMENTDB ={
+  URI: process.env.DOCUMENTDB_URI,
+  USERNAME: process.env.DOCUMENTDB_USERNAME,
+  PASSWORD: process.env.DOCUMENTDB_PASSWORD,
 }
 
 /**
@@ -31,8 +37,8 @@ const DOCUMENTDB = {
 const connectToDatabase = async (): Promise<void> => {
   await mongoose.connect(DOCUMENTDB?.URI, {
     serverSelectionTimeoutMS: 5000,
-    tls: true,
-    tlsCAFile: DOCUMENTDB?.SSL_CA_FILE,
+    // tls: true,
+    // tlsCAFile: DOCUMENTDB?.SSL_CA_FILE,
     authSource: 'admin',
     user: DOCUMENTDB?.USERNAME,
     pass: DOCUMENTDB?.PASSWORD,
