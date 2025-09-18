@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Set working directory
 WORKDIR /usr/src/app
@@ -68,8 +68,8 @@ COPY ./dist ./dist
 COPY package.json ./
 
 # Install production dependencies only
-# RUN yarn install --production --frozen-lockfile
-RUN yarn install --production --verbose
+RUN yarn install --production --frozen-lockfile
+#RUN yarn install --production --verbose
 
 # Start the application
 CMD [ "yarn", "start:webprod" ]
