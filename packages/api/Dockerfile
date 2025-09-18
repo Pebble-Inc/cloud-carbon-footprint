@@ -69,7 +69,7 @@ COPY package.json ./
 
 # Install production dependencies only
 # RUN yarn install --production --frozen-lockfile
-RUN yarn install
+RUN yarn install --production --verbose
 
 # Start the application
 CMD [ "yarn", "start:webprod" ]
