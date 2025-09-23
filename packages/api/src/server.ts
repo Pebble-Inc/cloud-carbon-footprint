@@ -37,8 +37,8 @@ PASSWORD: 'PasswordPebblePassword',
 const connectToDatabase = async (): Promise<void> => {
   await mongoose.connect(DOCUMENTDB?.URI, {
     serverSelectionTimeoutMS: 5000,
-    // tls: true,
-    // tlsCAFile: DOCUMENTDB?.SSL_CA_FILE,
+    tls: true,
+    tlsCAFile: DOCUMENTDB?.SSL_CA_FILE,
     authSource: 'admin',
     user: DOCUMENTDB?.USERNAME,
     pass: DOCUMENTDB?.PASSWORD,
