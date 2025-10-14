@@ -1,139 +1,22 @@
-name: CCF - Build & Push (GCP)
-
+name: test-wif
 on:
-  push:
-    branches:
-      - develop
-      - 'release/*'
+  workflow_dispatch:
 
 jobs:
-  build-and-push:
+  test:
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
-      id-token: write     # OIDC to Google
-      actions: read
-
+      id-token: write
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref_name }}
+      - uses: actions/checkout@v4
 
-      - name: Set Build Parameters
+      - name: Sanity check WIF secrets
         run: |
-          set -e
-          BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD | sed 's/\//_/g')
-          COMMIT_SHA=$(git rev-parse --short HEAD)
-          echo "DTAG_BRANCH=$BRANCH_NAME" >> $GITHUB_ENV
-          echo "DTAG_SHA=$COMMIT_SHA" >> $GITHUB_ENV
-          echo "Branch: $BRANCH_NAME | SHA: $COMMIT_SHA"
+          test -n "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" || (echo "Missing GCP_WORKLOAD_IDENTITY_PROVIDER" && exit 1)
+          test -n "${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}" || (echo "Missing GCP_SERVICE_ACCOUNT_EMAIL" && exit 1)
+          test -n "${{ secrets.GCP_PROJECT_ID }}" || (echo "Missing GCP_PROJECT_ID" && exit 1)
 
-      - name: Use Node.js 18
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          registry-url: https://registry.npmjs.org/
-
-      - name: Cache Dependencies
-        id: cache-modules
-        uses: actions/cache@v4
-        with:
-          path: '**/node_modules'
-          key: ${{ runner.os }}-node_modules-${{ hashFiles('yarn.lock', '**/package.json') }}
-
-      - name: Install Dependencies
-        run: yarn install --immutable
-
-      # === Build-time secrets still come from AWS (same as your old workflow) ===
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Retrieve Secrets from AWS Secrets Manager
-        run: |
-          set -e
-          AWS_REGION=${{ secrets.AWS_REGION }}
-          echo "Retrieving secrets from AWS region: $AWS_REGION"
-
-          # SSL cert (DocumentDB)
-          SSL_CERT_SECRET=$(aws secretsmanager get-secret-value \
-            --region "$AWS_REGION" \
-            --secret-id documentDB-dev-ecs-globalkey \
-            --query "SecretString" --output text || echo "")
-          if [[ -z "$SSL_CERT_SECRET" ]]; then
-            echo "ERROR: Could not fetch 'documentDB-dev-ecs-globalkey'"; exit 1
-          fi
-          echo "$SSL_CERT_SECRET" > global-bundle.pem
-          echo "DOCUMENTDB_SSL_CA_FILE=global-bundle.pem" >> $GITHUB_ENV
-
-          # Key/value secret JSON
-          SECRET_ECS=$(aws secretsmanager get-secret-value \
-            --region "$AWS_REGION" \
-            --secret-id documentDB-dev-ecs \
-            --query "SecretString" --output text || echo "")
-          if [[ -z "$SECRET_ECS" ]]; then
-            echo "ERROR: Could not fetch 'documentDB-dev-ecs'"; exit 1
-          fi
-
-          # Extract entries
-          DOCUMENTDB_URI=$(echo "$SECRET_ECS" | jq -r '.DOCUMENTDB_URI')
-          DOCUMENTDB_USERNAME=$(echo "$SECRET_ECS" | jq -r '.DOCUMENTDB_USERNAME')
-          DOCUMENTDB_PASSWORD=$(echo "$SECRET_ECS" | jq -r '.DOCUMENTDB_PASSWORD')
-          CACHE_MODE=$(echo "$SECRET_ECS" | jq -r '.CACHE_MODE')
-          TENANT_DB=$(echo "$SECRET_ECS" | jq -r '.TENANT_DB')
-          AWS_AUTH_MODE=$(echo "$SECRET_ECS" | jq -r '.AWS_AUTH_MODE')
-          AWS_TARGET_ACCOUNT_ROLE_NAME=$(echo "$SECRET_ECS" | jq -r '.AWS_TARGET_ACCOUNT_ROLE_NAME')
-          ECS_ROLE_NAME=$(echo "$SECRET_ECS" | jq -r '.ECS_ROLE_NAME')
-          TENANT_ROLE_NAME=$(echo "$SECRET_ECS" | jq -r '.TENANT_ROLE_NAME')
-          DB_HOST=$(echo "$SECRET_ECS" | jq -r '.DB_HOST')
-          DB_PORT=$(echo "$SECRET_ECS" | jq -r '.DB_PORT')
-          DB_USER=$(echo "$SECRET_ECS" | jq -r '.DB_USER')
-          DB_PASS=$(echo "$SECRET_ECS" | jq -r '.DB_PASS')
-          DB_NAME=$(echo "$SECRET_ECS" | jq -r '.DB_NAME')
-          DB_SSL=$(echo "$SECRET_ECS" | jq -r '.DB_SSL')
-
-          # Branch → env mapping
-          BRANCH_NAME="${{ github.ref_name }}"
-          if [[ "$BRANCH_NAME" == "develop" ]]; then
-            ENV_VALUE=$(echo "$SECRET_ECS" | jq -r '.DEV_ENV')
-            CCF_ROLE=$(echo "$SECRET_ECS" | jq -r '.DEV_CCF_ROLE')
-          elif [[ "$BRANCH_NAME" == release/* ]]; then
-            ENV_VALUE=$(echo "$SECRET_ECS" | jq -r '.PROD_ENV')
-            CCF_ROLE=$(echo "$SECRET_ECS" | jq -r '.PROD_CCF_ROLE')
-          else
-            echo "Unsupported branch: $BRANCH_NAME"; exit 1
-          fi
-
-          # Export env for docker build
-          {
-            echo "CCF_ROLE=$CCF_ROLE"
-            echo "ENV_VALUE=$ENV_VALUE"
-            echo "DOCUMENTDB_URI=$DOCUMENTDB_URI"
-            echo "DOCUMENTDB_USERNAME=$DOCUMENTDB_USERNAME"
-            echo "DOCUMENTDB_PASSWORD=$DOCUMENTDB_PASSWORD"
-            echo "CACHE_MODE=$CACHE_MODE"
-            echo "TENANT_DB=$TENANT_DB"
-            echo "AWS_AUTH_MODE=$AWS_AUTH_MODE"
-            echo "AWS_TARGET_ACCOUNT_ROLE_NAME=$AWS_TARGET_ACCOUNT_ROLE_NAME"
-            echo "ECS_ROLE_NAME=$ECS_ROLE_NAME"
-            echo "TENANT_ROLE_NAME=$TENANT_ROLE_NAME"
-            echo "AWS_REGION=${{ secrets.AWS_REGION }}"
-            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
-            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-            echo "DB_HOST=$DB_HOST"
-            echo "DB_PORT=$DB_PORT"
-            echo "DB_USER=$DB_USER"
-            echo "DB_PASS=$DB_PASS"
-            echo "DB_NAME=$DB_NAME"
-            echo "DB_SSL=$DB_SSL"
-          } >> $GITHUB_ENV
-
-      # === Google auth and docker credential helper ===
       - name: Google Auth (OIDC)
         uses: google-github-actions/auth@v2
         with:
@@ -145,103 +28,13 @@ jobs:
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Who am I
+        run: |
+          gcloud auth list
+          gcloud config get-value account
+
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
 
-      # === Build app artifacts (same as your old flow) ===
-      - name: Download DocumentDB Certificate Bundle (local copy in repo tree if needed)
-        run: |
-          echo "Downloading AWS DocumentDB certificate bundle..."
-          cd packages/api
-          curl -sSfL -o global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem || true
-          echo "Certificate bundle step completed"
-
-      - name: Build Packages
-        run: |
-          echo "Building common package..."
-          cd packages/common && yarn build
-
-          echo "Building app package..."
-          cd ../app && yarn build
-
-          echo "Building API package..."
-          cd ../api
-          yarn install
-          yarn build
-          cp ../../yarn.lock .
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          install: true
-
-      # === Build & push to Artifact Registry ===
-      - name: Build, Tag, and Push Docker Image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./packages/api
-          push: true
-          tags: |
-            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO_CCF }}/cloud-carbon-footprint:${{ env.DTAG_BRANCH }}
-            ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO_CCF }}/cloud-carbon-footprint:${{ env.DTAG_SHA }}
-          build-args: |
-            VERSION=${{ env.DTAG_SHA }}
-            DOCUMENTDB_URI=${{ env.DOCUMENTDB_URI }}
-            DOCUMENTDB_USERNAME=${{ env.DOCUMENTDB_USERNAME }}
-            DOCUMENTDB_PASSWORD=${{ env.DOCUMENTDB_PASSWORD }}
-            CACHE_MODE=${{ env.CACHE_MODE }}
-            TENANT_DB=${{ env.TENANT_DB }}
-            AWS_AUTH_MODE=${{ env.AWS_AUTH_MODE }}
-            AWS_TARGET_ACCOUNT_ROLE_NAME=${{ env.AWS_TARGET_ACCOUNT_ROLE_NAME }}
-            ECS_ROLE_NAME=${{ env.ECS_ROLE_NAME }}
-            TENANT_ROLE_NAME=${{ env.TENANT_ROLE_NAME }}
-            AWS_REGION=${{ env.AWS_REGION }}
-            AWS_ACCESS_KEY_ID=${{ env.AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY=${{ env.AWS_SECRET_ACCESS_KEY }}
-            ENV=${{ env.ENV_VALUE }}
-            CCF_ROLE=${{ env.CCF_ROLE }}
-            DB_HOST=${{ env.DB_HOST }}
-            DB_PORT=${{ env.DB_PORT }}
-            DB_USER=${{ env.DB_USER }}
-            DB_PASS=${{ env.DB_PASS }}
-            DB_NAME=${{ env.DB_NAME }}
-            DB_SSL=${{ env.DB_SSL }}
-          no-cache: true
-          progress: plain
-
-      # ---- Future: Helm deploy to GKE (commented until your chart is ready) ----
-      # - name: Determine Deployment Environment (GKE)
-      #   run: |
-      #     set -e
-      #     if [[ "${{ env.DTAG_BRANCH }}" == "develop" ]]; then
-      #       echo "GKE_CLUSTER=${{ secrets.GKE_DEV_CLUSTER }}" >> $GITHUB_ENV
-      #       echo "GKE_LOCATION=${{ secrets.GKE_DEV_LOCATION }}" >> $GITHUB_ENV
-      #       echo "K8S_NAMESPACE=pebble-ccf-dev" >> $GITHUB_ENV
-      #       echo "VALUES_SERVER=helm/ccf/values-dev.yaml" >> $GITHUB_ENV
-      #     elif [[ "${{ env.DTAG_BRANCH }}" == release_* ]]; then
-      #       echo "GKE_CLUSTER=${{ secrets.GKE_PROD_CLUSTER }}" >> $GITHUB_ENV
-      #       echo "GKE_LOCATION=${{ secrets.GKE_PROD_LOCATION }}" >> $GITHUB_ENV
-      #       echo "K8S_NAMESPACE=pebble-ccf" >> $GITHUB_ENV
-      #       echo "VALUES_SERVER=helm/ccf/values-prod.yaml" >> $GITHUB_ENV
-      #     else
-      #       echo "Unsupported branch ${ { env.DTAG_BRANCH } }"; exit 1
-      #
-      # - name: Get GKE Credentials
-      #   uses: google-github-actions/get-gke-credentials@v2
-      #   with:
-      #     cluster_name: ${{ env.GKE_CLUSTER }}
-      #     location: ${{ env.GKE_LOCATION }}
-      #     project_id: ${{ secrets.GCP_PROJECT_ID }}
-      #
-      # - name: Helm upgrade CCF
-      #   env:
-      #     IMAGE_REPO: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO_CCF }}/cloud-carbon-footprint
-      #     IMAGE_TAG:  ${{ env.DTAG_SHA }}
-      #   run: |
-      #     helm upgrade --install pebble-ccf ./helm/ccf \
-      #       -n "${{ env.K8S_NAMESPACE }}" \
-      #       -f "${{ env.VALUES_SERVER }}" \
-      #       --set image.repository="${IMAGE_REPO}" \
-      #       --set image.tag="${IMAGE_TAG}" \
-      #       --history-max 10 \
-      #       --wait --timeout 10m
+      - name: List AR repos (proof)
+        run: gcloud artifacts repositories list --location ${{ secrets.GCP_REGION }}
