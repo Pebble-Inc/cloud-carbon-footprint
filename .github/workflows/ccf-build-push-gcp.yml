@@ -148,6 +148,13 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
 
+      - name: Download DocumentDB Certificate Bundle (local copy in repo tree if needed)
+        run: |
+          echo "Downloading AWS DocumentDB certificate bundle..."
+          cd packages/api
+          curl -sSfL -o global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem || true
+          echo "Certificate bundle step completed"
+
       - name: Build Packages
         run: |
           echo "Building common package..."
@@ -161,6 +168,7 @@ jobs:
           yarn install
           yarn build
           cp ../../yarn.lock .
+
           
       # Step 9: Set up Docker Buildx
       - name: Set up Docker Buildx
