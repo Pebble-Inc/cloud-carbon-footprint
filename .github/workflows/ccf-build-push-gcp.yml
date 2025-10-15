@@ -17,11 +17,13 @@ jobs:
       actions: read
 
     steps:
+      # Step 1: Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
 
+      # Step 2: Set Build Parameters
       - name: Set Build Parameters
         run: |
           set -e
@@ -31,22 +33,32 @@ jobs:
           echo "DTAG_SHA=$COMMIT_SHA" >> $GITHUB_ENV
           echo "Branch: $BRANCH_NAME | SHA: $COMMIT_SHA"
 
+      # Step 3: Use Node.js 18
       - name: Use Node.js 18
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           registry-url: https://registry.npmjs.org/
 
+      # Step 4: Cache Dependencies
       - name: Cache Dependencies
         uses: actions/cache@v4
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-node_modules-${{ hashFiles('yarn.lock', '**/package.json') }}
 
+      # Step 5: Install Dependencies
       - name: Install Dependencies
         run: yarn install --immutable
 
-      # GCP OIDC authentication (replace AWS authentication)
+      # Step 6: GCP Credentials (using Workload Identity Federation)
+      - name: Sanity check WIF secrets
+        run: |
+          test -n "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" || (echo "Missing GCP_WORKLOAD_IDENTITY_PROVIDER" && exit 1)
+          test -n "${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}" || (echo "Missing GCP_SERVICE_ACCOUNT_EMAIL" && exit 1)
+          test -n "${{ secrets.GCP_PROJECT_ID }}" || (echo "Missing GCP_PROJECT_ID" && exit 1)
+          test -n "${{ secrets.GCP_REGION }}" || (echo "Missing GCP_REGION" && exit 1)
+
       - name: Google Auth (OIDC)
         uses: google-github-actions/auth@v2
         with:
@@ -55,40 +67,94 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           export_environment_variables: true
 
-      # Google Cloud setup
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
-
-      # Download GCP Secrets from Secret Manager
+      # Step 7: Retrieve GCP secrets from Secret Manager
       - name: Retrieve Secrets from GCP Secret Manager
         shell: bash
         run: |
           set -e
+          GCP_PROJECT=${{ secrets.GCP_PROJECT_ID }}
+          GCP_REGION=${{ secrets.GCP_REGION }}
 
-          # Retrieve secrets from GCP
-          GCP_SECRET_NAME="pebble-agent-manager-dev"
-          DOCUMENTDB_SECRET=$(gcloud secrets versions access latest --secret="${GCP_SECRET_NAME}" --project="${{ secrets.GCP_PROJECT_ID }}")
+          # SSL cert (DocumentDB)
+          SSL_CERT_SECRET=$(gcloud secrets versions access latest \
+            --secret="documentDB-dev-ecs-globalkey" --project "$GCP_PROJECT" || echo "")
+          if [[ -z "$SSL_CERT_SECRET" ]]; then
+            echo "ERROR: Could not fetch 'documentDB-dev-ecs-globalkey'"; exit 1
+          fi
+          echo "$SSL_CERT_SECRET" > global-bundle.pem
+          echo "DOCUMENTDB_SSL_CA_FILE=global-bundle.pem" >> $GITHUB_ENV
 
-          if [[ -z "$DOCUMENTDB_SECRET" ]]; then
-            echo "ERROR: Could not fetch secret: ${GCP_SECRET_NAME}"; exit 1
+          # Key/value secret JSON (do NOT echo it)
+          SECRET_ECS=$(gcloud secrets versions access latest \
+            --secret="documentDB-dev-ecs" --project "$GCP_PROJECT" || echo "")
+          if [[ -z "$SECRET_ECS" ]]; then
+            echo "ERROR: Could not fetch 'documentDB-dev-ecs'"; exit 1
           fi
 
-          # Parsing secret data (example)
-          DOCUMENTDB_URI=$(jq -r '.DOCUMENTDB_URI' <<<"$DOCUMENTDB_SECRET")
-          DOCUMENTDB_USERNAME=$(jq -r '.DOCUMENTDB_USERNAME' <<<"$DOCUMENTDB_SECRET")
-          DOCUMENTDB_PASSWORD=$(jq -r '.DOCUMENTDB_PASSWORD' <<<"$DOCUMENTDB_SECRET")
-          TENANT_DB=$(jq -r '.TENANT_DB' <<<"$DOCUMENTDB_SECRET")
+          # Extract entries from JSON secret
+          DOCUMENTDB_URI=$(jq -r '.DOCUMENTDB_URI' <<<"$SECRET_ECS")
+          DOCUMENTDB_USERNAME=$(jq -r '.DOCUMENTDB_USERNAME' <<<"$SECRET_ECS")
+          DOCUMENTDB_PASSWORD=$(jq -r '.DOCUMENTDB_PASSWORD' <<<"$SECRET_ECS")
+          CACHE_MODE=$(jq -r '.CACHE_MODE' <<<"$SECRET_ECS")
+          TENANT_DB=$(jq -r '.TENANT_DB' <<<"$SECRET_ECS")
+          AWS_AUTH_MODE=$(jq -r '.AWS_AUTH_MODE' <<<"$SECRET_ECS")
+          AWS_TARGET_ACCOUNT_ROLE_NAME=$(jq -r '.AWS_TARGET_ACCOUNT_ROLE_NAME' <<<"$SECRET_ECS")
+          ECS_ROLE_NAME=$(jq -r '.ECS_ROLE_NAME' <<<"$SECRET_ECS")
+          TENANT_ROLE_NAME=$(jq -r '.TENANT_ROLE_NAME' <<<"$SECRET_ECS")
+          DB_HOST=$(jq -r '.DB_HOST' <<<"$SECRET_ECS")
+          DB_PORT=$(jq -r '.DB_PORT' <<<"$SECRET_ECS")
+          DB_USER=$(jq -r '.DB_USER' <<<"$SECRET_ECS")
+          DB_PASS=$(jq -r '.DB_PASS' <<<"$SECRET_ECS")
+          DB_NAME=$(jq -r '.DB_NAME' <<<"$SECRET_ECS")
+          DB_SSL=$(jq -r '.DB_SSL' <<<"$SECRET_ECS")
 
-          # Export secrets as environment variables for docker build
-          echo "DOCUMENTDB_URI=$DOCUMENTDB_URI" >> $GITHUB_ENV
-          echo "DOCUMENTDB_USERNAME=$DOCUMENTDB_USERNAME" >> $GITHUB_ENV
-          echo "DOCUMENTDB_PASSWORD=$DOCUMENTDB_PASSWORD" >> $GITHUB_ENV
-          echo "TENANT_DB=$TENANT_DB" >> $GITHUB_ENV
+          # Branch → env mapping
+          BRANCH_NAME="${{ github.ref_name }}"
+          if [[ "$BRANCH_NAME" == "develop" ]]; then
+            ENV_VALUE=$(jq -r '.DEV_ENV' <<<"$SECRET_ECS")
+            CCF_ROLE=$(jq -r '.DEV_CCF_ROLE' <<<"$SECRET_ECS")
+          elif [[ "$BRANCH_NAME" == release/* ]]; then
+            ENV_VALUE=$(jq -r '.PROD_ENV' <<<"$SECRET_ECS")
+            CCF_ROLE=$(jq -r '.PROD_CCF_ROLE' <<<"$SECRET_ECS")
+          else
+            echo "Unsupported branch: $BRANCH_NAME"; exit 1
+          fi
 
-      # Build & Push Docker Image to Artifact Registry
+          # Export environment variables for docker build
+          {
+            echo "CCF_ROLE=$CCF_ROLE"
+            echo "ENV_VALUE=$ENV_VALUE"
+            echo "DOCUMENTDB_URI=$DOCUMENTDB_URI"
+            echo "DOCUMENTDB_USERNAME=$DOCUMENTDB_USERNAME"
+            echo "DOCUMENTDB_PASSWORD=$DOCUMENTDB_PASSWORD"
+            echo "CACHE_MODE=$CACHE_MODE"
+            echo "TENANT_DB=$TENANT_DB"
+            echo "AWS_AUTH_MODE=$AWS_AUTH_MODE"
+            echo "AWS_TARGET_ACCOUNT_ROLE_NAME=$AWS_TARGET_ACCOUNT_ROLE_NAME"
+            echo "ECS_ROLE_NAME=$ECS_ROLE_NAME"
+            echo "TENANT_ROLE_NAME=$TENANT_ROLE_NAME"
+            echo "DB_HOST=$DB_HOST"
+            echo "DB_PORT=$DB_PORT"
+            echo "DB_USER=$DB_USER"
+            echo "DB_PASS=$DB_PASS"
+            echo "DB_NAME=$DB_NAME"
+            echo "DB_SSL=$DB_SSL"
+          } >> $GITHUB_ENV
+
+      # Step 8: Configure Docker for Artifact Registry
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+
+      # Step 9: Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+
+      # Step 10: Build Docker Image & Push to GCP Artifact Registry
       - name: Build, Tag, and Push Docker Image
         uses: docker/build-push-action@v6
         with:
@@ -98,10 +164,26 @@ jobs:
             ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO_CCF }}/pebble-ccf:${{ env.DTAG_BRANCH }}
             ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO_CCF }}/pebble-ccf:${{ env.DTAG_SHA }}
           build-args: |
+            VERSION=${{ env.DTAG_SHA }}
             DOCUMENTDB_URI=${{ env.DOCUMENTDB_URI }}
             DOCUMENTDB_USERNAME=${{ env.DOCUMENTDB_USERNAME }}
             DOCUMENTDB_PASSWORD=${{ env.DOCUMENTDB_PASSWORD }}
+            CACHE_MODE=${{ env.CACHE_MODE }}
             TENANT_DB=${{ env.TENANT_DB }}
+            AWS_AUTH_MODE=${{ env.AWS_AUTH_MODE }}
+            AWS_TARGET_ACCOUNT_ROLE_NAME=${{ env.AWS_TARGET_ACCOUNT_ROLE_NAME }}
+            ECS_ROLE_NAME=${{ env.ECS_ROLE_NAME }}
+            TENANT_ROLE_NAME=${{ env.TENANT_ROLE_NAME }}
+            AWS_REGION=${{ env.AWS_REGION }}
+            DB_HOST=${{ env.DB_HOST }}
+            DB_PORT=${{ env.DB_PORT }}
+            DB_USER=${{ env.DB_USER }}
+            DB_PASS=${{ env.DB_PASS }}
+            DB_NAME=${{ env.DB_NAME }}
+            DB_SSL=${{ env.DB_SSL }}
+          no-cache: true
+          progress: plain
+
 
       # Optional: Deploy to GKE (uncomment for GKE deployment)
       # - name: Determine Deployment Environment (GKE)
