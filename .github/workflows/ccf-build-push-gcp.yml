@@ -10,49 +10,53 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
-    # Required for OIDC → Google Auth
     permissions:
       contents: read
       id-token: write
       actions: read
 
     steps:
-      # Step 1: Checkout Repository
+      # 1) Checkout
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
 
-      # Step 2: Set Build Parameters
-      - name: Set Build Parameters
-        run: |
-          set -e
-          BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD | sed 's/\//_/g')
-          COMMIT_SHA=$(git rev-parse --short HEAD)
-          echo "DTAG_BRANCH=$BRANCH_NAME" >> $GITHUB_ENV
-          echo "DTAG_SHA=$COMMIT_SHA" >> $GITHUB_ENV
-          echo "Branch: $BRANCH_NAME | SHA: $COMMIT_SHA"
-
-      # Step 3: Use Node.js 18
+      # 2) Node/Yarn (Corepack) + Cache
+      - name: Enable Corepack
+        run: corepack enable
       - name: Use Node.js 18
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           registry-url: https://registry.npmjs.org/
-
-      # Step 4: Cache Dependencies
+          cache: 'yarn'
       - name: Cache Dependencies
         uses: actions/cache@v4
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-node_modules-${{ hashFiles('yarn.lock', '**/package.json') }}
 
-      # Step 5: Install Dependencies
+      # 3) Build tags
+      - name: Set Build Parameters
+        shell: bash
+        run: |
+          set -euo pipefail
+          BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD | sed 's/\//_/g')
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          {
+            echo "DTAG_BRANCH=$BRANCH_NAME"
+            echo "DTAG_SHA=$COMMIT_SHA"
+          } >> "$GITHUB_ENV"
+          echo "Branch: $BRANCH_NAME | SHA: $COMMIT_SHA"
+
+      # 4) Install deps
       - name: Install Dependencies
         run: yarn install --immutable
 
-      # Step 6: GCP Credentials (using Workload Identity Federation)
+      # 5) GCP auth (WIF)
       - name: Sanity check WIF secrets
+        shell: bash
         run: |
           test -n "${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" || (echo "Missing GCP_WORKLOAD_IDENTITY_PROVIDER" && exit 1)
           test -n "${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}" || (echo "Missing GCP_SERVICE_ACCOUNT_EMAIL" && exit 1)
@@ -70,31 +74,34 @@ jobs:
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
 
-      # Step 7: Retrieve GCP secrets from Secret Manager
+      # 6) Tools needed in the runner
+      - name: Ensure jq is installed
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      # 7) Pull secrets (Secret Manager)
       - name: Retrieve Secrets from GCP Secret Manager
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
           GCP_PROJECT=${{ secrets.GCP_PROJECT_ID }}
-          GCP_REGION=${{ secrets.GCP_REGION }}
 
           # SSL cert (DocumentDB)
           SSL_CERT_SECRET=$(gcloud secrets versions access latest \
-            --secret="documentDB-dev-ecs-globalkey" --project "$GCP_PROJECT" || echo "")
-          if [[ -z "$SSL_CERT_SECRET" ]]; then
+            --secret="documentDB-dev-ecs-globalkey" --project "$GCP_PROJECT" || true)
+          if [[ -z "${SSL_CERT_SECRET}" ]]; then
             echo "ERROR: Could not fetch 'documentDB-dev-ecs-globalkey'"; exit 1
           fi
           echo "$SSL_CERT_SECRET" > global-bundle.pem
-          echo "DOCUMENTDB_SSL_CA_FILE=global-bundle.pem" >> $GITHUB_ENV
+          echo "DOCUMENTDB_SSL_CA_FILE=global-bundle.pem" >> "$GITHUB_ENV"
 
-          # Key/value secret JSON (do NOT echo it)
+          # Key/value JSON
           SECRET_ECS=$(gcloud secrets versions access latest \
-            --secret="documentDB-dev-ecs" --project "$GCP_PROJECT" || echo "")
-          if [[ -z "$SECRET_ECS" ]]; then
+            --secret="documentDB-dev-ecs" --project "$GCP_PROJECT" || true)
+          if [[ -z "${SECRET_ECS}" ]]; then
             echo "ERROR: Could not fetch 'documentDB-dev-ecs'"; exit 1
           fi
 
-          # Extract entries from JSON secret
+          # Extract entries
           DOCUMENTDB_URI=$(jq -r '.DOCUMENTDB_URI' <<<"$SECRET_ECS")
           DOCUMENTDB_USERNAME=$(jq -r '.DOCUMENTDB_USERNAME' <<<"$SECRET_ECS")
           DOCUMENTDB_PASSWORD=$(jq -r '.DOCUMENTDB_PASSWORD' <<<"$SECRET_ECS")
@@ -111,7 +118,6 @@ jobs:
           DB_NAME=$(jq -r '.DB_NAME' <<<"$SECRET_ECS")
           DB_SSL=$(jq -r '.DB_SSL' <<<"$SECRET_ECS")
 
-          # Branch → env mapping
           BRANCH_NAME="${{ github.ref_name }}"
           if [[ "$BRANCH_NAME" == "develop" ]]; then
             ENV_VALUE=$(jq -r '.DEV_ENV' <<<"$SECRET_ECS")
@@ -123,7 +129,6 @@ jobs:
             echo "Unsupported branch: $BRANCH_NAME"; exit 1
           fi
 
-          # Export environment variables for docker build
           {
             echo "CCF_ROLE=$CCF_ROLE"
             echo "ENV_VALUE=$ENV_VALUE"
@@ -142,13 +147,14 @@ jobs:
             echo "DB_PASS=$DB_PASS"
             echo "DB_NAME=$DB_NAME"
             echo "DB_SSL=$DB_SSL"
-          } >> $GITHUB_ENV
+          } >> "$GITHUB_ENV"
 
-      # Step 8: Configure Docker for Artifact Registry
+      # 8) Artifact Registry auth
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
 
-      - name: Download DocumentDB Certificate Bundle (local copy in repo tree if needed)
+      # 9) Build workspaces
+      - name: Download DocumentDB Certificate Bundle (optional local copy)
         run: |
           echo "Downloading AWS DocumentDB certificate bundle..."
           cd packages/api
@@ -156,7 +162,9 @@ jobs:
           echo "Certificate bundle step completed"
 
       - name: Build Packages
+        shell: bash
         run: |
+          set -euo pipefail
           echo "Building common package..."
           cd packages/common && yarn build
 
@@ -169,14 +177,13 @@ jobs:
           yarn build
           cp ../../yarn.lock .
 
-          
-      # Step 9: Set up Docker Buildx
+      # 10) Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
           install: true
 
-      # Step 10: Build Docker Image & Push to GCP Artifact Registry
+      # 11) Build & Push
       - name: Build, Tag, and Push Docker Image
         uses: docker/build-push-action@v6
         with:
@@ -206,34 +213,44 @@ jobs:
           no-cache: true
           progress: plain
 
-
-      # Optional: Deploy to GKE (uncomment for GKE deployment)
+      # 12) (Optional) Deploy to GKE
       - name: Determine Deployment Environment (GKE)
+        id: envsel
+        shell: bash
         run: |
+          set -euo pipefail
           if [[ "${{ env.DTAG_BRANCH }}" == "develop" ]]; then
-            echo "GKE_CLUSTER=${{ secrets.GKE_DEV_CLUSTER }}" >> $GITHUB_ENV
-            echo "GKE_LOCATION=${{ secrets.GKE_DEV_LOCATION }}" >> $GITHUB_ENV
-            echo "K8S_NAMESPACE=pebble-backend-dev" >> $GITHUB_ENV
-            echo "VALUES_UI=helm/charts/cloud-carbon-footprint/values-dev.yaml" >> $GITHUB_ENV
+            echo "GKE_CLUSTER=${{ secrets.GKE_DEV_CLUSTER }}" >> "$GITHUB_ENV"
+            echo "GKE_LOCATION=${{ secrets.GKE_DEV_LOCATION }}" >> "$GITHUB_ENV"
+            echo "K8S_NAMESPACE=pebble-backend-dev" >> "$GITHUB_ENV"
+            echo "VALUES_CCF=helm/charts/cloud-carbon-footprint/values-dev.yaml" >> "$GITHUB_ENV"
           elif [[ "${{ env.DTAG_BRANCH }}" == release_* ]]; then
-            echo "GKE_CLUSTER=${{ secrets.GKE_PROD_CLUSTER }}" >> $GITHUB_ENV
-            echo "GKE_LOCATION=${{ secrets.GKE_PROD_LOCATION }}" >> $GITHUB_ENV
-            echo "K8S_NAMESPACE=pebble-backend" >> $GITHUB_ENV
-            echo "VALUES_UI=helm/charts/cloud-carbon-footprint/values-prod.yaml" >> $GITHUB_ENV
+            echo "GKE_CLUSTER=${{ secrets.GKE_PROD_CLUSTER }}" >> "$GITHUB_ENV"
+            echo "GKE_LOCATION=${{ secrets.GKE_PROD_LOCATION }}" >> "$GITHUB_ENV"
+            echo "K8S_NAMESPACE=pebble-backend" >> "$GITHUB_ENV"
+            echo "VALUES_CCF=helm/charts/cloud-carbon-footprint/values-prod.yaml" >> "$GITHUB_ENV"
           else
-            echo "Unsupported branch ${ { env.DTAG_BRANCH } }"; exit 1
-    
+            echo "Unsupported branch ${{ env.DTAG_BRANCH }}"; exit 1
+          fi
+
+          # Define image repo/tag for Helm
+          echo "IMAGE_REPO=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_ARTIFACT_REPO_CCF }}/pebble-ccf" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=${{ env.DTAG_SHA }}" >> "$GITHUB_ENV"
+
       - name: Get GKE Credentials
+        if: ${{ success() }}
         uses: google-github-actions/get-gke-credentials@v2
         with:
           cluster_name: ${{ env.GKE_CLUSTER }}
           location: ${{ env.GKE_LOCATION }}
           project_id: ${{ secrets.GCP_PROJECT_ID }}
-    
+
       - name: Helm upgrade CCF
+        if: ${{ success() }}
         run: |
           helm upgrade --install pebble-ccf ./helm/ \
             -n "${{ env.K8S_NAMESPACE }}" \
+            --create-namespace \
             -f "${{ env.VALUES_CCF }}" \
             --set image.repository="${IMAGE_REPO}" \
             --set image.tag="${IMAGE_TAG}" \
