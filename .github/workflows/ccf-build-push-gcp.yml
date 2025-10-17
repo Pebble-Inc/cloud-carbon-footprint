@@ -248,7 +248,7 @@ jobs:
       - name: Helm upgrade CCF
         if: ${{ success() }}
         run: |
-          helm upgrade --install pebble-ccf ./helm/ \
+          helm upgrade --install pebble-ccf ./helm/charts/cloud-carbon-footprint \
             -n "${{ env.K8S_NAMESPACE }}" \
             --create-namespace \
             -f "${{ env.VALUES_CCF }}" \
