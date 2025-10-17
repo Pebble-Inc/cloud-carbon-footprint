@@ -208,31 +208,34 @@ jobs:
 
 
       # Optional: Deploy to GKE (uncomment for GKE deployment)
-      # - name: Determine Deployment Environment (GKE)
-      #   run: |
-      #     if [[ "${{ env.DTAG_BRANCH }}" == "develop" ]]; then
-      #       echo "GKE_CLUSTER=${{ secrets.GKE_DEV_CLUSTER }}" >> $GITHUB_ENV
-      #       echo "GKE_LOCATION=${{ secrets.GKE_DEV_LOCATION }}" >> $GITHUB_ENV
-      #       echo "K8S_NAMESPACE=pebble-ccf-dev" >> $GITHUB_ENV
-      #     elif [[ "${{ env.DTAG_BRANCH }}" == release_* ]]; then
-      #       echo "GKE_CLUSTER=${{ secrets.GKE_PROD_CLUSTER }}" >> $GITHUB_ENV
-      #       echo "GKE_LOCATION=${{ secrets.GKE_PROD_LOCATION }}" >> $GITHUB_ENV
-      #       echo "K8S_NAMESPACE=pebble-ccf" >> $GITHUB_ENV
-      #     else
-      #       echo "Unsupported branch ${ { env.DTAG_BRANCH } }"; exit 1
-      #
-      # - name: Get GKE Credentials
-      #   uses: google-github-actions/get-gke-credentials@v2
-      #   with:
-      #     cluster_name: ${{ env.GKE_CLUSTER }}
-      #     location: ${{ env.GKE_LOCATION }}
-      #     project_id: ${{ secrets.GCP_PROJECT_ID }}
-      #
-      # - name: Helm upgrade CCF
-      #   run: |
-      #     helm upgrade --install pebble-ccf ./helm/ccf \
-      #       -n "${{ env.K8S_NAMESPACE }}" \
-      #       --set image.repository="${IMAGE_REPO}" \
-      #       --set image.tag="${IMAGE_TAG}" \
-      #       --history-max 10 \
-      #       --wait --timeout 10m
+      - name: Determine Deployment Environment (GKE)
+        run: |
+          if [[ "${{ env.DTAG_BRANCH }}" == "develop" ]]; then
+            echo "GKE_CLUSTER=${{ secrets.GKE_DEV_CLUSTER }}" >> $GITHUB_ENV
+            echo "GKE_LOCATION=${{ secrets.GKE_DEV_LOCATION }}" >> $GITHUB_ENV
+            echo "K8S_NAMESPACE=pebble-backend-dev" >> $GITHUB_ENV
+            echo "VALUES_UI=helm/charts/cloud-carbon-footprint/values-dev.yaml" >> $GITHUB_ENV
+          elif [[ "${{ env.DTAG_BRANCH }}" == release_* ]]; then
+            echo "GKE_CLUSTER=${{ secrets.GKE_PROD_CLUSTER }}" >> $GITHUB_ENV
+            echo "GKE_LOCATION=${{ secrets.GKE_PROD_LOCATION }}" >> $GITHUB_ENV
+            echo "K8S_NAMESPACE=pebble-backend" >> $GITHUB_ENV
+            echo "VALUES_UI=helm/charts/cloud-carbon-footprint/values-prod.yaml" >> $GITHUB_ENV
+          else
+            echo "Unsupported branch ${ { env.DTAG_BRANCH } }"; exit 1
+    
+      - name: Get GKE Credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_LOCATION }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+    
+      - name: Helm upgrade CCF
+        run: |
+          helm upgrade --install pebble-ccf ./helm/ \
+            -n "${{ env.K8S_NAMESPACE }}" \
+            -f "${{ env.VALUES_CCF }}" \
+            --set image.repository="${IMAGE_REPO}" \
+            --set image.tag="${IMAGE_TAG}" \
+            --history-max 10 \
+            --wait --timeout 10m
