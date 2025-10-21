@@ -3,7 +3,7 @@ client:
     resolver: ""
 
   deployment:
-    replicaCount: 2
+    replicaCount: 1
 
     image:
       repository: docker.io/cloudcarbonfootprint/client
@@ -81,7 +81,7 @@ api:
   #  AWS_BILLING_ACCOUNT_NAME=your-billing-account-name
 
   deployment:
-    replicaCount: 2
+    replicaCount: 1
 
     image:
       repository: docker.io/cloudcarbonfootprint/api
