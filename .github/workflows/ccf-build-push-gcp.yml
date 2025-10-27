@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - develop
-      - 'gkeprod/*'
+      - 'release/*'
 
 jobs:
   build-and-push:
@@ -122,7 +122,7 @@ jobs:
           if [[ "$BRANCH_NAME" == "develop" ]]; then
             ENV_VALUE=$(jq -r '.DEV_ENV' <<<"$SECRET_ECS")
             CCF_ROLE=$(jq -r '.DEV_CCF_ROLE' <<<"$SECRET_ECS")
-          elif [[ "$BRANCH_NAME" == gkeprod/* ]]; then
+          elif [[ "$BRANCH_NAME" == release/* ]]; then
             ENV_VALUE=$(jq -r '.PROD_ENV' <<<"$SECRET_ECS")
             CCF_ROLE=$(jq -r '.PROD_CCF_ROLE' <<<"$SECRET_ECS")
           else
@@ -224,7 +224,7 @@ jobs:
             echo "GKE_LOCATION=${{ secrets.GKE_DEV_LOCATION }}" >> "$GITHUB_ENV"
             echo "K8S_NAMESPACE=pebble-backend-dev" >> "$GITHUB_ENV"
             echo "VALUES_CCF=helm/charts/cloud-carbon-footprint/values-dev.yaml" >> "$GITHUB_ENV"
-          elif [[ "${{ env.DTAG_BRANCH }}" == gkeprod_* ]]; then
+          elif [[ "${{ env.DTAG_BRANCH }}" == release_* ]]; then
             echo "GKE_CLUSTER=${{ secrets.GKE_PROD_CLUSTER }}" >> "$GITHUB_ENV"
             echo "GKE_LOCATION=${{ secrets.GKE_PROD_LOCATION }}" >> "$GITHUB_ENV"
             echo "K8S_NAMESPACE=pebble-backend" >> "$GITHUB_ENV"
